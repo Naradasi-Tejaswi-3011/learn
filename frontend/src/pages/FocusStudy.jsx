@@ -946,10 +946,10 @@ const FocusStudy = () => {
         <div className="relative h-screen overflow-hidden">
           {/* Study Timer Display */}
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
-            <div className="bg-black bg-opacity-75 px-6 py-3 rounded-lg">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-100 px-6 py-3 rounded-lg shadow-lg border border-blue-200">
               <div className="text-center">
-                <div className="text-sm text-gray-300 mb-1">Study Time</div>
-                <div className="text-2xl font-mono font-bold">
+                <div className="text-sm text-blue-700 mb-1 font-bold">Study Time</div>
+                <div className="text-2xl font-mono font-bold text-blue-900">
                   {formatTimeDisplay(getRemainingTime())}
                 </div>
               </div>

@@ -70,7 +70,7 @@ A comprehensive full-stack learning management system with AI-powered quiz gener
 ### Prerequisites
 - Node.js 16+ and npm
 - MongoDB Atlas account
-- OpenAI API key (optional, for AI quiz generation)
+- Gemini API key (optional, for AI quiz generation and chat functionality)
 
 ### Installation
 

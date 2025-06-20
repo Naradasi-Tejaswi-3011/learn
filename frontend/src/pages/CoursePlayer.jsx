@@ -28,8 +28,8 @@ const CoursePlayer = () => {
     const fetchCourseData = async () => {
       try {
         const [courseRes, progressRes] = await Promise.all([
-          axios.get(`/courses/${courseId}/modules`),
-          axios.get(`/progress/${courseId}`)
+          axios.get(`${import.meta.env.VITE_API_URL}/courses/${courseId}/modules`),
+          axios.get(`${import.meta.env.VITE_API_URL}/progress/${courseId}`)
         ]);
 
         setCourse(courseRes.data);
@@ -56,7 +56,7 @@ const CoursePlayer = () => {
 
   const updateProgress = async (moduleId, contentId, progressData) => {
     try {
-      const response = await axios.put(`/progress/${courseId}/module/${moduleId}`, {
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/progress/${courseId}/module/${moduleId}`, {
         contentId,
         ...progressData
       });
@@ -143,7 +143,7 @@ const CoursePlayer = () => {
 
     // Award XP
     try {
-      await axios.post('/gamification/xp', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/gamification/xp`, {
         points: content.xpReward || 10,
         reason: `Completed ${content.title}`
       });

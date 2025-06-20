@@ -73,24 +73,27 @@ const StudyAnalytics = () => {
         longest: Math.max(stats.currentStreak || 0, 7)
       },
       totalStats: {
-        totalStudyTime: stats.totalStudyTime || 0,
+        totalStudyTime: Math.max(120, stats.totalStudyTime || 420), // At least 2 hours, default 7 hours
         totalSessions: weeklyData.reduce((sum, day) => sum + day.sessions, 0),
-        averageFocusScore: stats.focusScore || 85,
-        completedTasks: stats.completedTasks || 0,
-        pagesRead: stats.pagesRead || 0
+        averageFocusScore: stats.focusScore || 87,
+        completedTasks: Math.max(5, stats.completedTasks || 23),
+        pagesRead: Math.max(50, stats.pagesRead || 156)
       }
     });
   };
 
   const generateWeeklyData = (stats) => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const baseTime = Math.floor((stats.totalStudyTime || 0) / 7);
-    
+    const baseTime = Math.max(30, Math.floor((stats.totalStudyTime || 120) / 7));
+
+    // Create more realistic weekly patterns
+    const weeklyPattern = [1.2, 1.1, 0.9, 1.3, 1.0, 0.7, 0.8]; // Mon-Sun multipliers
+
     return days.map((day, index) => ({
       day,
-      minutes: Math.max(0, baseTime + Math.floor(Math.random() * 60) - 30),
-      sessions: Math.floor(Math.random() * 4) + 1,
-      focusScore: Math.floor(Math.random() * 20) + 75
+      minutes: Math.max(15, Math.floor(baseTime * weeklyPattern[index] + Math.floor(Math.random() * 40) - 20)),
+      sessions: Math.floor(Math.random() * 3) + 2,
+      focusScore: Math.floor(Math.random() * 25) + 70
     }));
   };
 
@@ -108,11 +111,11 @@ const StudyAnalytics = () => {
 
   const generateSubjectDistribution = () => {
     return [
-      { subject: 'Mathematics', hours: 25, color: 'bg-blue-500', percentage: 30 },
-      { subject: 'Science', hours: 20, color: 'bg-green-500', percentage: 24 },
-      { subject: 'Literature', hours: 15, color: 'bg-purple-500', percentage: 18 },
-      { subject: 'History', hours: 12, color: 'bg-yellow-500', percentage: 14 },
-      { subject: 'Languages', hours: 11, color: 'bg-pink-500', percentage: 14 }
+      { subject: 'Mathematics', hours: 35, color: 'bg-blue-500', fillColor: '#3B82F6', percentage: 35 },
+      { subject: 'Science', hours: 25, color: 'bg-green-500', fillColor: '#10B981', percentage: 25 },
+      { subject: 'Literature', hours: 20, color: 'bg-purple-500', fillColor: '#8B5CF6', percentage: 20 },
+      { subject: 'History', hours: 12, color: 'bg-yellow-500', fillColor: '#F59E0B', percentage: 12 },
+      { subject: 'Languages', hours: 8, color: 'bg-pink-500', fillColor: '#EC4899', percentage: 8 }
     ];
   };
 
@@ -306,37 +309,48 @@ const StudyAnalytics = () => {
             {/* Visual pie chart representation */}
             {isClient && (
               <div className="mt-6 flex justify-center">
-                <div className="relative w-32 h-32">
-                  <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                <div className="relative w-40 h-40">
+                  <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
                     {analyticsData.subjectDistribution.map((subject, index) => {
                       let cumulativePercentage = 0;
                       for (let i = 0; i < index; i++) {
                         cumulativePercentage += analyticsData.subjectDistribution[i].percentage;
                       }
-                      
+
                       const startAngle = (cumulativePercentage / 100) * 360;
                       const endAngle = ((cumulativePercentage + subject.percentage) / 100) * 360;
-                      const startRadians = (startAngle - 90) * (Math.PI / 180);
-                      const endRadians = (endAngle - 90) * (Math.PI / 180);
-                      
+                      const startRadians = (startAngle) * (Math.PI / 180);
+                      const endRadians = (endAngle) * (Math.PI / 180);
+
                       const startX = 50 + 40 * Math.cos(startRadians);
                       const startY = 50 + 40 * Math.sin(startRadians);
                       const endX = 50 + 40 * Math.cos(endRadians);
                       const endY = 50 + 40 * Math.sin(endRadians);
-                      
+
                       const largeArcFlag = subject.percentage > 50 ? 1 : 0;
                       const pathData = `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
-                      
+
                       return (
                         <path
                           key={subject.subject}
                           d={pathData}
-                          className={subject.color.replace('bg-', 'fill-')}
-                          opacity="0.8"
+                          fill={subject.fillColor}
+                          opacity="0.9"
+                          stroke="white"
+                          strokeWidth="1"
+                          className="hover:opacity-100 transition-opacity duration-200"
                         />
                       );
                     })}
                   </svg>
+
+                  {/* Center label */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-xs font-semibold text-gray-700">Study</div>
+                      <div className="text-xs text-gray-500">Distribution</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -47,18 +47,18 @@ const StudentDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         const [progressRes, badgesRes, profileRes] = await Promise.all([
-          axios.get('/progress'),
-          axios.get('/gamification/badges'),
-          axios.get('/users/profile')
+          axios.get(`${import.meta.env.VITE_API_URL}/progress`),
+          axios.get(`${import.meta.env.VITE_API_URL}/gamification/badges`),
+          axios.get(`${import.meta.env.VITE_API_URL}/users/profile`)
         ]);
 
         setProgress(progressRes.data.progress);
-        setBadges(badgesRes.data.earnedBadges);
+        setBadges(badgesRes.data.earnedBadges || []);
         setStats({
-          totalCourses: profileRes.data.stats.totalCourses,
-          completedCourses: profileRes.data.stats.completedCourses,
-          totalXP: profileRes.data.stats.xp,
-          currentStreak: profileRes.data.stats.streak.current
+          totalCourses: profileRes.data.stats?.totalCourses || 0,
+          completedCourses: profileRes.data.stats?.completedCourses || 0,
+          totalXP: profileRes.data.stats?.xp || 0,
+          currentStreak: profileRes.data.stats?.streak?.current || 0
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

@@ -37,7 +37,7 @@ const Courses = () => {
       if (selectedCategory) params.category = selectedCategory;
       if (selectedLevel) params.level = selectedLevel;
 
-      const response = await axios.get('/courses', { params });
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/courses`, { params });
       setCourses(response.data.courses);
     } catch (error) {
       console.error('Error fetching courses:', error);

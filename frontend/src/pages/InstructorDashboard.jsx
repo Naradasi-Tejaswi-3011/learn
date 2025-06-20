@@ -32,16 +32,11 @@ const InstructorDashboard = () => {
       setRefreshing(true);
       console.log('Fetching courses for instructor:', user._id);
 
-      // Fetch instructor's courses with timeout
-      const coursesRes = await Promise.race([
-        axios.get('/courses', {
-          params: { instructor: user._id },
-          timeout: 5000 // 5 second timeout
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timeout')), 5000)
-        )
-      ]);
+      // Simple axios call without Promise.race to avoid timeout issues
+      const coursesRes = await axios.get(`${import.meta.env.VITE_API_URL}/courses`, {
+        params: { instructor: user._id },
+        timeout: 10000 // 10 second timeout
+      });
 
       console.log('Courses response:', coursesRes.data);
       const courses = coursesRes.data.courses || [];
@@ -62,6 +57,7 @@ const InstructorDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      alert('Failed to load courses. Please check your connection and try again.');
       // Set empty state on error
       setCourses([]);
       setStats({
@@ -85,7 +81,7 @@ const InstructorDashboard = () => {
   const handleDeleteCourse = async (courseId) => {
     if (window.confirm('Are you sure you want to delete this course?')) {
       try {
-        await axios.delete(`/courses/${courseId}`);
+        await axios.delete(`${import.meta.env.VITE_API_URL}/courses/${courseId}`);
         fetchDashboardData(); // Refresh data after deletion
       } catch (error) {
         console.error('Error deleting course:', error);
@@ -95,7 +91,7 @@ const InstructorDashboard = () => {
 
   const generateReport = async (courseId) => {
     try {
-      const response = await axios.post('/reports/generate', { courseId });
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/reports/generate`, { courseId });
       // Handle report display - could open in modal or new page
       console.log('Report generated:', response.data);
       alert('Report generated successfully! Check console for details.');

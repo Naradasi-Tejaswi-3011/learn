@@ -24,7 +24,7 @@ const CourseDetail = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const response = await axios.get(`/courses/${id}`);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/courses/${id}`);
         setCourse(response.data.course);
         setIsEnrolled(response.data.isEnrolled);
       } catch (error) {
@@ -45,10 +45,12 @@ const CourseDetail = () => {
 
     setEnrolling(true);
     try {
-      await axios.post(`/courses/${id}/enroll`);
+      await axios.post(`${import.meta.env.VITE_API_URL}/courses/${id}/enroll`);
       setIsEnrolled(true);
+      alert('Successfully enrolled in the course!');
     } catch (error) {
       console.error('Error enrolling:', error);
+      alert('Failed to enroll. Please try again.');
     } finally {
       setEnrolling(false);
     }
