@@ -36,7 +36,7 @@ const NoteSummarizer = ({ onClose }) => {
               paragraphs.forEach(paragraph => {
                 if (paragraph.trim().length > 0) {
                   const para = document.createElement('p');
-                  para.className = 'mb-3';
+                  para.className = 'mb-3 text-gray-800';
                   para.textContent = paragraph.trim();
                   documentContentRef.current.appendChild(para);
                 }
@@ -96,7 +96,7 @@ const NoteSummarizer = ({ onClose }) => {
         setDocumentText(text);
         if (documentContentRef.current) {
           const pre = document.createElement('pre');
-          pre.className = 'whitespace-pre-wrap';
+          pre.className = 'whitespace-pre-wrap text-gray-800';
           pre.textContent = text;
           documentContentRef.current.appendChild(pre);
         }
@@ -130,7 +130,7 @@ const NoteSummarizer = ({ onClose }) => {
           if (documentContentRef.current) {
             const pageElement = document.createElement('div');
             pageElement.className = 'pdf-page mb-4 p-3 border border-gray-200 rounded';
-            pageElement.innerHTML = `<div class="text-sm font-medium text-gray-600 mb-2">Page ${pageNum}</div><div>${pageText}</div>`;
+            pageElement.innerHTML = `<div class="text-sm font-medium text-gray-600 mb-2">Page ${pageNum}</div><div class="text-gray-800">${pageText}</div>`;
             documentContentRef.current.appendChild(pageElement);
           }
         }
@@ -168,6 +168,7 @@ const NoteSummarizer = ({ onClose }) => {
       header.textContent = 'Selected Text:';
       
       const content = document.createElement('div');
+      content.className = 'text-gray-800';
       content.textContent = textToSummarize;
       
       selectionElement.appendChild(header);

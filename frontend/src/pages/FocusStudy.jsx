@@ -598,6 +598,15 @@ const FocusStudy = () => {
         }
       }
 
+      // Try to import text layer utilities
+      let textLayerUtils = null;
+      try {
+        const textLayerModule = await import('pdfjs-dist/web/pdf_viewer.mjs');
+        textLayerUtils = textLayerModule;
+      } catch (e) {
+        console.warn('Text layer utilities not available:', e);
+      }
+
       // Cancel previous render task
       if (currentRenderTask.current) {
         currentRenderTask.current.cancel();
@@ -643,22 +652,51 @@ const FocusStudy = () => {
       console.log('PDF render completed');
 
       // Render text layer for selection and search
-      const textContent = await page.getTextContent();
-      const textLayerDiv = textLayerRef.current;
-      if (textLayerDiv) {
-        textLayerDiv.innerHTML = '';
-        textLayerDiv.style.left = canvas.offsetLeft + 'px';
-        textLayerDiv.style.top = canvas.offsetTop + 'px';
-        textLayerDiv.style.height = canvas.offsetHeight + 'px';
-        textLayerDiv.style.width = canvas.offsetWidth + 'px';
+      try {
+        const textContent = await page.getTextContent();
+        const textLayerDiv = textLayerRef.current;
+        if (textLayerDiv && textContent) {
+          textLayerDiv.innerHTML = '';
+          textLayerDiv.style.left = canvas.offsetLeft + 'px';
+          textLayerDiv.style.top = canvas.offsetTop + 'px';
+          textLayerDiv.style.height = canvas.offsetHeight + 'px';
+          textLayerDiv.style.width = canvas.offsetWidth + 'px';
 
-        // Create text layer
-        pdfjsLib.renderTextLayer({
-          textContent: textContent,
-          container: textLayerDiv,
-          viewport: viewport,
-          textDivs: []
-        });
+          // Check if renderTextLayer is available, if not, create a simple text layer
+          if (pdfjsLib.renderTextLayer) {
+            pdfjsLib.renderTextLayer({
+              textContent: textContent,
+              container: textLayerDiv,
+              viewport: viewport,
+              textDivs: []
+            });
+          } else if (textLayerUtils && textLayerUtils.renderTextLayer) {
+            textLayerUtils.renderTextLayer({
+              textContent: textContent,
+              container: textLayerDiv,
+              viewport: viewport,
+              textDivs: []
+            });
+          } else {
+            // Fallback: create a simple text overlay
+            const textItems = textContent.items;
+            textItems.forEach(item => {
+              const textDiv = document.createElement('div');
+              textDiv.textContent = item.str;
+              textDiv.style.position = 'absolute';
+              textDiv.style.left = (item.transform[4] * viewport.scale) + 'px';
+              textDiv.style.top = (viewport.height - item.transform[5] * viewport.scale) + 'px';
+              textDiv.style.fontSize = (item.transform[0] * viewport.scale) + 'px';
+              textDiv.style.color = 'transparent';
+              textDiv.style.cursor = 'text';
+              textDiv.className = 'textLayer';
+              textLayerDiv.appendChild(textDiv);
+            });
+          }
+        }
+      } catch (textLayerError) {
+        console.warn('Text layer rendering failed:', textLayerError);
+        // Continue without text layer
       }
 
       // Update progress
