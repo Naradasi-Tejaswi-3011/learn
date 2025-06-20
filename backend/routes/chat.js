@@ -20,12 +20,14 @@ try {
 router.post('/', auth, async (req, res) => {
   try {
     const { message, context } = req.body;
+    console.log('Chat request received:', { message: message?.substring(0, 50), userId: req.user._id });
 
     if (!message) {
       return res.status(400).json({ message: 'Message is required' });
     }
 
     if (!model) {
+      console.error('Gemini model not initialized');
       return res.status(503).json({
         message: 'AI service is currently unavailable',
         fallback: "I'm sorry, the AI service is currently unavailable. Please try again later or ask your question in a different way."
@@ -38,9 +40,11 @@ router.post('/', auth, async (req, res) => {
     // Combine system prompt with user message for Gemini
     const fullPrompt = `${systemPrompt}\n\nUser Question: ${message}\n\nPlease provide a helpful response:`;
 
+    console.log('Sending request to Gemini API...');
     const result = await model.generateContent(fullPrompt);
     const response = result.response;
     const text = response.text();
+    console.log('Gemini API response received successfully');
 
     res.json({
       response: text,
@@ -49,6 +53,11 @@ router.post('/', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Chat API error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
 
     if (error.message?.includes('quota') || error.message?.includes('limit')) {
       return res.status(429).json({
@@ -59,7 +68,8 @@ router.post('/', auth, async (req, res) => {
 
     res.status(500).json({
       message: 'Error processing your request',
-      fallback: "I apologize, but I'm having trouble processing your request right now. Please try rephrasing your question or ask something else."
+      fallback: "I apologize, but I'm having trouble processing your request right now. Please try rephrasing your question or ask something else.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
