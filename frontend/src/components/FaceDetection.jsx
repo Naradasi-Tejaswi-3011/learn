@@ -227,6 +227,7 @@ const FaceDetection = ({ onFaceStatus, isFullscreen, isPaused }) => {
         if (!faceDetected && faceCountRef.current >= 2) {
           console.log("✅ FACE CONFIRMED: Updating state to FACE DETECTED");
           setFaceDetected(true);
+          console.log("🔄 Calling onFaceStatus(true)");
           onFaceStatus(true);
         }
       } else {
@@ -236,6 +237,7 @@ const FaceDetection = ({ onFaceStatus, isFullscreen, isPaused }) => {
         if (faceDetected && noFaceCountRef.current >= 2) {
           console.log("❌ NO FACE CONFIRMED: Updating state to FACE NOT DETECTED");
           setFaceDetected(false);
+          console.log("🔄 Calling onFaceStatus(false)");
           onFaceStatus(false);
         }
       }

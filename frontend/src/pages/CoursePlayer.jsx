@@ -200,13 +200,13 @@ const CoursePlayer = () => {
   const currentContentData = currentModuleData.content[currentContent];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="flex">
         {/* Sidebar - Course Navigation */}
-        <div className="w-80 bg-gray-800 h-screen overflow-y-auto">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-bold truncate">{course.course?.title || 'Course'}</h2>
-            <p className="text-sm text-gray-400">
+        <div className="w-80 bg-white h-screen overflow-y-auto border-r border-gray-200 shadow-sm">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-bold truncate text-gray-900">{course.course?.title || 'Course'}</h2>
+            <p className="text-sm text-gray-600">
               Module {currentModule + 1} of {course.modules.length}
             </p>
           </div>

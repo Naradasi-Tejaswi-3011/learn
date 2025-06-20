@@ -258,80 +258,93 @@ const FocusStudy = () => {
     }
   };
 
+  // Get remaining time
+  const getRemainingTime = () => {
+    const totalSessionSeconds = sessionDuration * 60;
+    const remainingSeconds = Math.max(0, totalSessionSeconds - elapsedTime);
+    return remainingSeconds;
+  };
+
   // Face detection handler
   const handleFaceStatus = useCallback((isPresent) => {
-    console.log(`Face detection: Face ${isPresent ? 'DETECTED' : 'ABSENT'}`);
+    console.log(`🎯 Face detection callback: Face ${isPresent ? 'DETECTED' : 'ABSENT'}`);
+    console.log(`📊 Current state - isPaused: ${isPaused}, pdfFile: ${!!pdfFile}, faceAutoDetectionPause: ${window.__faceAutoDetectionPause}`);
     setFacePresent(isPresent);
 
     if (isPaused && !window.__faceAutoDetectionPause) {
-      console.log("Timer already manually paused - not changing state");
+      console.log("⏸️ Timer already manually paused - not changing state");
       return;
     }
 
     if (faceTimeoutRef.current) {
+      console.log("⏰ Clearing existing face timeout");
       clearTimeout(faceTimeoutRef.current);
       faceTimeoutRef.current = null;
     }
 
-    if (!isPresent && !isPaused && isFullscreen) {
-      console.log("Face absent - starting 3-second countdown to pause timer");
+    if (!isPresent && !isPaused && pdfFile) {
+      console.log("⚠️ Face absent - starting 3-second countdown to pause timer");
       faceTimeoutRef.current = setTimeout(() => {
-        console.log("Face still absent after 3 seconds - pausing timer");
+        console.log("🛑 Face still absent after 3 seconds - pausing timer");
         if (typeof window !== 'undefined') {
           window.__faceAutoDetectionPause = true;
         }
         setIsPaused(true);
         setShowFaceAlert(true);
-        setAlertMessage("Timer paused - no face detected");
+        setAlertMessage(`Timer paused - no face detected. You have ${formatTimeDisplay(getRemainingTime())} remaining in your study session.`);
         faceTimeoutRef.current = null;
       }, 3000);
     }
 
-    if (isPresent && isPaused && window.__faceAutoDetectionPause && isFullscreen) {
-      console.log("Face detected again after auto-pause - showing resume option");
+    if (isPresent && isPaused && window.__faceAutoDetectionPause && pdfFile) {
+      console.log("✅ Face detected again after auto-pause - showing resume option");
       setShowFaceAlert(true);
-      setAlertMessage("Face detected - resume timer?");
+      setAlertMessage(`Face detected! You have ${formatTimeDisplay(getRemainingTime())} remaining in your study session.`);
     }
-  }, [isPaused, isFullscreen, setAlertMessage, setShowFaceAlert, setIsPaused]);
+  }, [isPaused, pdfFile, getRemainingTime]);
 
   // Resume timer function
   const handleResumeTimer = () => {
-    console.log("▶️ User clicked Resume Timer - continuing timer");
+    console.log("▶️ User clicked Resume Timer - continuing from", elapsedTime, "seconds");
     setShowFaceAlert(false);
+    setShowPauseDialog(false);
+    setShowExitConfirmation(false);
 
+    // Reset face detection auto-pause flag
     if (typeof window !== 'undefined') {
       window.__faceAutoDetectionPause = false;
     }
 
-    setTimeout(() => {
-      if (!timer) {
-        console.log("Creating new timer interval");
-        const newInterval = setInterval(() => {
-          setElapsedTime(prevTime => {
-            const newTime = prevTime + 1;
-            const totalSessionSeconds = sessionDuration * 60;
+    // Resume timer immediately - don't restart, just unpause
+    setIsPaused(false);
 
-            if (newTime >= totalSessionSeconds) {
-              console.log("Session complete");
-              clearInterval(newInterval);
-              setTimer(null);
-              return totalSessionSeconds;
-            }
+    // Only create new timer if one doesn't exist
+    if (!timer) {
+      console.log("Creating new timer interval to continue from", elapsedTime, "seconds");
+      const newInterval = setInterval(() => {
+        setElapsedTime(prevTime => {
+          const newTime = prevTime + 1;
+          const totalSessionSeconds = sessionDuration * 60;
 
-            if (!isBreak && breakInterval > 0 && newTime % (breakInterval * 60) === 0) {
-              clearInterval(newInterval);
-              setTimer(null);
-              setIsBreak(true);
-              setShowBreakNotification(true);
-            }
+          if (newTime >= totalSessionSeconds) {
+            console.log("Session complete");
+            clearInterval(newInterval);
+            setTimer(null);
+            return totalSessionSeconds;
+          }
 
-            return newTime;
-          });
-        }, 1000);
-        setTimer(newInterval);
-      }
-      setIsPaused(false);
-    }, 300);
+          if (!isBreak && breakInterval > 0 && newTime % (breakInterval * 60) === 0) {
+            clearInterval(newInterval);
+            setTimer(null);
+            setIsBreak(true);
+            setShowBreakNotification(true);
+          }
+
+          return newTime;
+        });
+      }, 1000);
+      setTimer(newInterval);
+    }
   };
 
   // PDF navigation functions
@@ -449,21 +462,51 @@ const FocusStudy = () => {
   };
 
   const handleContinueStudying = () => {
+    console.log("🔄 Continue studying clicked - resuming from", elapsedTime, "seconds");
     setShowExitConfirmation(false);
     setShowPauseDialog(false);
+    setShowFaceAlert(false);
 
-    if (!isFullscreen) {
+    // Reset face detection auto-pause flag
+    if (typeof window !== 'undefined') {
+      window.__faceAutoDetectionPause = false;
+    }
+
+    // Always try to enter fullscreen if PDF is loaded
+    if (pdfFile && !isFullscreen) {
       enterFullscreen();
     }
 
-    setTimeout(() => {
-      if (isPaused) {
-        setIsPaused(false);
-      }
-      if (!timer) {
-        startTimer();
-      }
-    }, 300);
+    // Resume timer immediately - don't restart
+    setIsPaused(false);
+
+    // Only create timer if it doesn't exist
+    if (!timer) {
+      console.log("🚀 Creating timer interval to continue from", elapsedTime, "seconds");
+      const newInterval = setInterval(() => {
+        setElapsedTime(prevTime => {
+          const newTime = prevTime + 1;
+          const totalSessionSeconds = sessionDuration * 60;
+
+          if (newTime >= totalSessionSeconds) {
+            console.log("Session complete");
+            clearInterval(newInterval);
+            setTimer(null);
+            return totalSessionSeconds;
+          }
+
+          if (!isBreak && breakInterval > 0 && newTime % (breakInterval * 60) === 0) {
+            clearInterval(newInterval);
+            setTimer(null);
+            setIsBreak(true);
+            setShowBreakNotification(true);
+          }
+
+          return newTime;
+        });
+      }, 1000);
+      setTimer(newInterval);
+    }
   };
 
   const handleExitAnyway = () => {
@@ -476,6 +519,12 @@ const FocusStudy = () => {
     console.log("Resuming from break...");
     setIsBreak(false);
     setShowBreakNotification(false);
+    setShowFaceAlert(false);
+
+    // Reset face detection auto-pause flag
+    if (typeof window !== 'undefined') {
+      window.__faceAutoDetectionPause = false;
+    }
 
     if (!isFullscreen) {
       enterFullscreen();
@@ -489,13 +538,6 @@ const FocusStudy = () => {
         startTimer();
       }
     }, 300);
-  };
-
-  // Get remaining time
-  const getRemainingTime = () => {
-    const totalSessionSeconds = sessionDuration * 60;
-    const remainingSeconds = Math.max(0, totalSessionSeconds - elapsedTime);
-    return remainingSeconds;
   };
 
   // useEffect hooks
@@ -539,11 +581,34 @@ const FocusStudy = () => {
         clearInterval(timer);
         setTimer(null);
       }
-    } else if (!timer && elapsedTime > 0) {
-      console.log("Timer unpaused - restarting");
-      startTimer();
+    } else if (!timer && elapsedTime > 0 && !window.__faceAutoDetectionPause) {
+      console.log("Timer unpaused - continuing from", elapsedTime, "seconds");
+      // Continue timer from current elapsed time, don't restart
+      const newInterval = setInterval(() => {
+        setElapsedTime(prevTime => {
+          const newTime = prevTime + 1;
+          const totalSessionSeconds = sessionDuration * 60;
+
+          if (newTime >= totalSessionSeconds) {
+            console.log("Session complete");
+            clearInterval(newInterval);
+            setTimer(null);
+            return totalSessionSeconds;
+          }
+
+          if (!isBreak && breakInterval > 0 && newTime % (breakInterval * 60) === 0) {
+            clearInterval(newInterval);
+            setTimer(null);
+            setIsBreak(true);
+            setShowBreakNotification(true);
+          }
+
+          return newTime;
+        });
+      }, 1000);
+      setTimer(newInterval);
     }
-  }, [isPaused, timer, elapsedTime]);
+  }, [isPaused, timer, elapsedTime, sessionDuration, breakInterval, isBreak]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -713,18 +778,18 @@ const FocusStudy = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white relative">
+    <div className="min-h-screen bg-gray-50 text-gray-900 relative">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center space-x-4">
           <Link
             to="/self-paced"
-            className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
             <span>Back to Self-Paced Mode</span>
           </Link>
-          <h1 className="text-xl font-bold">Focus Study</h1>
+          <h1 className="text-xl font-bold text-gray-900">Focus Study</h1>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -747,22 +812,22 @@ const FocusStudy = () => {
       {!pdfFile ? (
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
           <div className="text-center max-w-2xl mx-auto p-8">
-            <h2 className="text-3xl font-bold mb-6">Focus Study Session</h2>
-            <p className="text-gray-300 mb-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-900">Focus Study Session</h2>
+            <p className="text-gray-600 mb-8">
               Upload your study material and enter a distraction-free environment with AI-powered focus tracking.
             </p>
 
             {/* File Upload Area */}
             <div
-              className="border-2 border-dashed border-gray-600 rounded-lg p-12 mb-8 hover:border-blue-500 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-gray-300 rounded-lg p-12 mb-8 hover:border-primary-500 transition-colors cursor-pointer bg-white"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-semibold mb-2">Drag & Drop Your Study Material</h3>
-              <p className="text-gray-400 mb-4">Or click to select a PDF file</p>
+              <h3 className="text-xl font-semibold mb-2 text-gray-900">Drag & Drop Your Study Material</h3>
+              <p className="text-gray-600 mb-4">Or click to select a PDF file</p>
               <p className="text-sm text-gray-500">
                 Screen will go fullscreen & timer will start automatically
               </p>
@@ -778,98 +843,98 @@ const FocusStudy = () => {
 
             {/* Study Settings */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-800 p-4 rounded-lg">
-                <label className="block text-sm font-medium mb-2">Session Duration</label>
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-medium mb-2 text-gray-700">Session Duration</label>
                 <div className="flex space-x-2">
                   <input
                     type="number"
                     value={sessionDuration}
                     onChange={(e) => setSessionDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-center text-white"
+                    className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-center text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     min="1"
                     max="720"
                   />
-                  <span className="text-sm text-gray-400 self-center">minutes</span>
+                  <span className="text-sm text-gray-600 self-center">minutes</span>
                 </div>
               </div>
 
-              <div className="bg-gray-800 p-4 rounded-lg">
-                <label className="block text-sm font-medium mb-2">Break Interval</label>
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-medium mb-2 text-gray-700">Break Interval</label>
                 <div className="flex space-x-2">
                   <input
                     type="number"
                     value={breakInterval}
                     onChange={(e) => setBreakInterval(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-center text-white"
+                    className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-center text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     min="0"
                     max="720"
                   />
-                  <span className="text-sm text-gray-400 self-center">minutes</span>
+                  <span className="text-sm text-gray-600 self-center">minutes</span>
                 </div>
               </div>
 
-              <div className="bg-gray-800 p-4 rounded-lg">
-                <label className="block text-sm font-medium mb-2">Break Duration</label>
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-medium mb-2 text-gray-700">Break Duration</label>
                 <div className="flex space-x-2">
                   <input
                     type="number"
                     value={breakDuration}
                     onChange={(e) => setBreakDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-center text-white"
+                    className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-center text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     min="1"
                     max="60"
                   />
-                  <span className="text-sm text-gray-400 self-center">minutes</span>
+                  <span className="text-sm text-gray-600 self-center">minutes</span>
                 </div>
               </div>
             </div>
 
             {/* Face Detection Settings */}
-            <div className="bg-gray-800 p-6 rounded-lg mb-8">
-              <h3 className="text-lg font-semibold mb-4">Face Detection Settings</h3>
+            <div className="bg-white p-6 rounded-lg mb-8 border border-gray-200 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Face Detection Settings</h3>
               <div className="flex items-center space-x-3 mb-4">
                 <input
                   type="checkbox"
                   id="faceDetection"
                   checked={faceDetectionEnabled}
                   onChange={(e) => setFaceDetectionEnabled(e.target.checked)}
-                  className="w-4 h-4 text-blue-600"
+                  className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
-                <label htmlFor="faceDetection" className="text-sm">
+                <label htmlFor="faceDetection" className="text-sm text-gray-700">
                   Enable face detection (pauses timer when you're away)
                 </label>
               </div>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 This feature uses your camera to detect if you're present and automatically pauses your timer when you step away during study.
               </p>
             </div>
 
             {/* Features List */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold mb-4">Study Room Features</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-300">
+            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Study Room Features</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
                 <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4 text-blue-400" />
+                  <FileText className="h-4 w-4 text-primary-600" />
                   <span>PDF viewer with zoom and rotate controls</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Timer className="h-4 w-4 text-green-400" />
+                  <Timer className="h-4 w-4 text-secondary-600" />
                   <span>Customizable study timers with break reminders</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Eye className="h-4 w-4 text-purple-400" />
+                  <Eye className="h-4 w-4 text-accent-600" />
                   <span>Face detection to pause timer when away</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Music className="h-4 w-4 text-yellow-400" />
+                  <Music className="h-4 w-4 text-yellow-600" />
                   <span>Background music options for focus</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Target className="h-4 w-4 text-red-400" />
+                  <Target className="h-4 w-4 text-red-600" />
                   <span>Progress tracking and study goals</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Coffee className="h-4 w-4 text-orange-400" />
+                  <Coffee className="h-4 w-4 text-orange-600" />
                   <span>AI chatbot and note summarizer</span>
                 </div>
               </div>
@@ -1093,22 +1158,20 @@ const FocusStudy = () => {
       {showFaceAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Study Timer</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Study Session Paused</h3>
             <p className="text-gray-700 mb-6">{alertMessage}</p>
             <div className="flex space-x-3">
-              {window.__faceAutoDetectionPause && (
-                <button
-                  onClick={handleResumeTimer}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Resume Timer
-                </button>
-              )}
               <button
-                onClick={() => setShowFaceAlert(false)}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+                onClick={handleResumeTimer}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                Close
+                Continue Studying
+              </button>
+              <button
+                onClick={handleExitAnyway}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Exit Study
               </button>
             </div>
           </div>
@@ -1247,8 +1310,9 @@ const FocusStudy = () => {
             <textarea
               value={currentNote}
               onChange={(e) => setCurrentNote(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[80px] text-sm text-gray-900"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[80px] text-sm text-gray-900 bg-white resize-none"
               placeholder="Take notes here..."
+              style={{ color: '#1f2937', backgroundColor: '#ffffff' }}
             />
             <button
               onClick={addNote}

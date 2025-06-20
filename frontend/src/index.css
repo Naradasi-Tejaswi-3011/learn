@@ -37,7 +37,17 @@
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 bg-white text-gray-900;
+  }
+
+  /* Force light styling for all form elements */
+  input, select, textarea {
+    @apply bg-white text-gray-900;
+    color-scheme: light;
+  }
+
+  input::placeholder {
+    @apply text-gray-500;
   }
 
   .badge {

@@ -155,7 +155,7 @@ const StudyAnalytics = () => {
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
             >
               <option value="week">This Week</option>
               <option value="month">This Month</option>
@@ -366,7 +366,7 @@ const StudyAnalytics = () => {
                     }`}
                     style={{ opacity: hour.studyTime > 0 ? 0.8 : 0.2 }}
                   />
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-white border border-gray-200 text-gray-900 text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                     {formatHour(hour.hour)}<br />
                     {hour.focusScore}% focus<br />
                     {hour.studyTime}m study
