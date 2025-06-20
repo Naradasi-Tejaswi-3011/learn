@@ -113,7 +113,12 @@ const FocusStudy = () => {
     console.log("Loading PDF file...");
     const fileReader = new FileReader();
     fileReader.onload = function() {
-      setPdfFile(fileReader.result);
+      // Create a copy of the ArrayBuffer to prevent detachment
+      const arrayBuffer = fileReader.result;
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const copiedBuffer = uint8Array.slice().buffer;
+
+      setPdfFile(copiedBuffer);
 
       const totalSessionMinutes = sessionDuration + (sessionDurationSeconds / 60);
       setSessionDuration(totalSessionMinutes);
@@ -582,8 +587,16 @@ const FocusStudy = () => {
       // Load PDF.js dynamically
       const pdfjsLib = await import('pdfjs-dist');
 
-      // Set worker source with a more reliable CDN
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+      // Set worker source with multiple fallbacks
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        try {
+          // Try to use the version-specific worker
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        } catch (e) {
+          // Fallback to a stable version
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+        }
+      }
 
       // Cancel previous render task
       if (currentRenderTask.current) {
@@ -591,7 +604,9 @@ const FocusStudy = () => {
       }
 
       console.log('Getting PDF document...');
-      const pdf = await pdfjsLib.getDocument(pdfFile).promise;
+      // Ensure we have a proper Uint8Array for PDF.js
+      const uint8Array = new Uint8Array(pdfFile);
+      const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
       pdfDocRef.current = pdf;
       setNumPages(pdf.numPages);
       console.log('PDF loaded, pages:', pdf.numPages);

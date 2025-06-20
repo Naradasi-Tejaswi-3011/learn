@@ -66,17 +66,28 @@ const NoteSummarizer = ({ onClose }) => {
     const fileType = file.type;
 
     if (fileType === 'application/pdf') {
-      // Load PDF.js dynamically
-      if (!window.pdfjsLib) {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-        script.onload = () => {
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-          processPDF(file);
-        };
-        document.head.appendChild(script);
-      } else {
-        processPDF(file);
+      // Use the local pdfjs-dist package
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+
+        // Set worker source with multiple fallbacks
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          try {
+            // Try to use the version-specific worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+          } catch (e) {
+            // Fallback to a stable version
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+          }
+        }
+
+        // Store reference for processPDF function
+        window.pdfjsLib = pdfjsLib;
+        await processPDF(file);
+      } catch (error) {
+        console.error('Error loading PDF.js:', error);
+        alert('Error loading PDF processor. Please try again.');
+        setIsLoading(false);
       }
     } else if (fileType === 'text/plain') {
       const reader = new FileReader();
@@ -101,9 +112,13 @@ const NoteSummarizer = ({ onClose }) => {
   const processPDF = async (file) => {
     const fileReader = new FileReader();
     fileReader.onload = async function () {
-      const typedArray = new Uint8Array(this.result);
+      // Create a copy of the ArrayBuffer to prevent detachment
+      const arrayBuffer = this.result;
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const copiedArray = uint8Array.slice();
+
       try {
-        const pdf = await window.pdfjsLib.getDocument({ data: typedArray }).promise;
+        const pdf = await window.pdfjsLib.getDocument({ data: copiedArray }).promise;
         let fullText = '';
 
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
