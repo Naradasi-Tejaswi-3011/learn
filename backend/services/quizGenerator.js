@@ -1,17 +1,30 @@
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize Gemini AI
+let genAI;
+let model;
+try {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  console.log('✅ Quiz Generator - Gemini AI initialized successfully');
+} catch (error) {
+  console.error('❌ Quiz Generator - Gemini AI initialization error:', error);
+}
 
 const generateQuizQuestions = async (courseData) => {
   try {
     console.log('Generating quiz for course:', courseData.title);
-    
+
+    if (!model) {
+      console.log('Gemini model not available, using fallback quiz');
+      return generateFallbackQuiz(courseData);
+    }
+
     // Extract course content for context
     const courseContent = extractCourseContent(courseData);
-    
-    const prompt = `
+
+    const prompt = `You are an expert educational content creator who specializes in creating high-quality quiz questions that test deep understanding of course material.
+
 Based on the following course content, generate 5 multiple-choice questions that test the student's understanding of the key concepts:
 
 Course Title: ${courseData.title}
@@ -40,25 +53,21 @@ Requirements:
 - Plausible distractors for incorrect options
 - Brief explanations for correct answers
 - Focus on practical application and understanding, not just memorization
-`;
+- Return ONLY the JSON format, no additional text`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert educational content creator who specializes in creating high-quality quiz questions that test deep understanding of course material."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 2000,
-      temperature: 0.7
-    });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
 
-    const quizData = JSON.parse(response.choices[0].message.content);
+    // Clean the response to extract JSON
+    let jsonText = text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/```json\n?/, '').replace(/\n?```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/```\n?/, '').replace(/\n?```$/, '');
+    }
+
+    const quizData = JSON.parse(jsonText);
     
     // Add metadata to each question
     const questionsWithMetadata = quizData.questions.map((q, index) => ({

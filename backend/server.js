@@ -30,10 +30,46 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URL)
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
+// MongoDB connection with proper options
+const mongoOptions = {
+  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  family: 4, // Use IPv4, skip trying IPv6
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  minPoolSize: 5, // Maintain a minimum of 5 socket connections
+  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+  heartbeatFrequencyMS: 10000, // Send a ping every 10 seconds
+  retryWrites: true,
+  retryReads: true,
+  tls: true, // Use TLS instead of ssl
+  tlsInsecure: true, // Allow insecure TLS for development
+};
+
+mongoose.connect(process.env.MONGO_URL, mongoOptions)
+.then(() => {
+  console.log('✅ MongoDB connected successfully');
+  console.log('📊 Connection state:', mongoose.connection.readyState);
+})
+.catch((err) => {
+  console.error('❌ MongoDB connection error:', err);
+  console.error('🔧 Trying to reconnect in 5 seconds...');
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGO_URL, mongoOptions);
+  }, 5000);
+});
+
+// Handle MongoDB connection events
+mongoose.connection.on('connected', () => {
+  console.log('🔗 Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('🔌 Mongoose disconnected from MongoDB');
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -43,6 +79,8 @@ app.use('/api/progress', require('./routes/progress'));
 app.use('/api/gamification', require('./routes/gamification'));
 app.use('/api/quiz', require('./routes/quiz'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/study-sessions', require('./routes/studySessions'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

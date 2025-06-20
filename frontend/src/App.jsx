@@ -19,6 +19,10 @@ import Notes from './pages/Notes';
 import Badges from './pages/Badges';
 import VoiceQuiz from './pages/VoiceQuiz';
 import VoiceQuizPage from './pages/VoiceQuizPage';
+import SelfPacedMode from './pages/SelfPacedMode';
+import FocusStudy from './pages/FocusStudy';
+import TaskBoard from './pages/TaskBoard';
+import StudyAnalytics from './pages/StudyAnalytics';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }) => {
@@ -103,6 +107,38 @@ function AppContent() {
           element={
             <ProtectedRoute requiredRole="student">
               <VoiceQuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/self-paced"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <SelfPacedMode />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/self-paced/focus-study"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <FocusStudy />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/self-paced/task-board"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <TaskBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/self-paced/analytics"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <StudyAnalytics />
             </ProtectedRoute>
           }
         />

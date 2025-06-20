@@ -251,14 +251,20 @@ const StudentDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="border border-gray-200 bg-gray-50 rounded-lg p-4 opacity-60">
+                <Link
+                  to="/self-paced"
+                  className="block border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 hover:border-indigo-300 hover:shadow-md transition-all group"
+                >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-gray-900">Self-Paced Mode</h4>
-                      <p className="text-sm text-gray-600">Coming soon...</p>
+                      <h4 className="font-medium text-gray-900 group-hover:text-indigo-700">Self-Paced Mode</h4>
+                      <p className="text-sm text-gray-600">Focus study with AI tools & analytics</p>
+                    </div>
+                    <div className="text-indigo-600 group-hover:text-indigo-700">
+                      <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
 

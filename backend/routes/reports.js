@@ -1,14 +1,21 @@
 const express = require('express');
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Course = require('../models/Course');
 const Progress = require('../models/Progress');
 const { auth, isInstructor } = require('../middleware/auth');
 
 const router = express.Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize Gemini AI
+let genAI;
+let model;
+try {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  console.log('✅ Reports - Gemini AI initialized successfully');
+} catch (error) {
+  console.error('❌ Reports - Gemini AI initialization error:', error);
+}
 
 // @route   POST /api/reports/generate
 // @desc    Generate AI performance report
@@ -81,23 +88,21 @@ router.post('/generate', [auth, isInstructor], async (req, res) => {
     Format the response as a comprehensive educational report.
     `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert educational analyst providing insights on student performance data."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 1500,
-      temperature: 0.7
-    });
+    if (!model) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service is currently unavailable',
+        fallback: 'Please try again later or generate a basic report manually.'
+      });
+    }
 
-    const report = completion.choices[0].message.content;
+    const fullPrompt = `You are an expert educational analyst providing insights on student performance data.
+
+${prompt}`;
+
+    const result = await model.generateContent(fullPrompt);
+    const response = result.response;
+    const report = response.text();
 
     res.json({
       success: true,
