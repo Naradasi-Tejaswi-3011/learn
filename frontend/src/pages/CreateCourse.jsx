@@ -184,6 +184,45 @@ const CreateCourse = () => {
       errors.push('All modules must have a title (at least 3 characters)');
     }
 
+    // Check if all content items have titles
+    const contentWithoutTitles = [];
+    modules.forEach((module, moduleIndex) => {
+      module.content.forEach((content, contentIndex) => {
+        if (!content.title || content.title.trim().length === 0) {
+          contentWithoutTitles.push(`Module ${moduleIndex + 1}, Content ${contentIndex + 1}`);
+        }
+      });
+    });
+    if (contentWithoutTitles.length > 0) {
+      errors.push(`The following content items need titles: ${contentWithoutTitles.join(', ')}`);
+    }
+
+    // Check if video content has URLs
+    const videoWithoutUrls = [];
+    modules.forEach((module, moduleIndex) => {
+      module.content.forEach((content, contentIndex) => {
+        if (content.type === 'video' && (!content.videoUrl || content.videoUrl.trim().length === 0)) {
+          videoWithoutUrls.push(`Module ${moduleIndex + 1}, Content ${contentIndex + 1}`);
+        }
+      });
+    });
+    if (videoWithoutUrls.length > 0) {
+      errors.push(`The following video content items need URLs: ${videoWithoutUrls.join(', ')}`);
+    }
+
+    // Check if text content has content
+    const textWithoutContent = [];
+    modules.forEach((module, moduleIndex) => {
+      module.content.forEach((content, contentIndex) => {
+        if (content.type === 'text' && (!content.textContent || content.textContent.trim().length === 0)) {
+          textWithoutContent.push(`Module ${moduleIndex + 1}, Content ${contentIndex + 1}`);
+        }
+      });
+    });
+    if (textWithoutContent.length > 0) {
+      errors.push(`The following text content items need content: ${textWithoutContent.join(', ')}`);
+    }
+
     if (errors.length > 0) {
       alert('Please fix the following errors:\n\n' + errors.join('\n'));
       setLoading(false);
@@ -474,28 +513,56 @@ const CreateCourse = () => {
                           type="text"
                           value={content.title}
                           onChange={(e) => updateModuleContent(moduleIndex, contentIndex, 'title', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2"
-                          placeholder="Content title"
+                          className={`w-full px-2 py-1 border rounded text-sm mb-2 ${
+                            !content.title || content.title.trim().length === 0
+                              ? 'border-red-300 bg-red-50'
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="Content title *"
+                          required
                         />
+                        {(!content.title || content.title.trim().length === 0) && (
+                          <p className="text-red-500 text-xs mb-2">Content title is required</p>
+                        )}
 
                         {content.type === 'video' && (
-                          <input
-                            type="url"
-                            value={content.videoUrl}
-                            onChange={(e) => updateModuleContent(moduleIndex, contentIndex, 'videoUrl', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            placeholder="Video URL (YouTube, Vimeo, or direct link)"
-                          />
+                          <>
+                            <input
+                              type="url"
+                              value={content.videoUrl}
+                              onChange={(e) => updateModuleContent(moduleIndex, contentIndex, 'videoUrl', e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                !content.videoUrl || content.videoUrl.trim().length === 0
+                                  ? 'border-red-300 bg-red-50'
+                                  : 'border-gray-300'
+                              }`}
+                              placeholder="Video URL (YouTube, Vimeo, or direct link) *"
+                              required
+                            />
+                            {(!content.videoUrl || content.videoUrl.trim().length === 0) && (
+                              <p className="text-red-500 text-xs mt-1">Video URL is required</p>
+                            )}
+                          </>
                         )}
 
                         {content.type === 'text' && (
-                          <textarea
-                            value={content.textContent}
-                            onChange={(e) => updateModuleContent(moduleIndex, contentIndex, 'textContent', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            rows={3}
-                            placeholder="Text content"
-                          />
+                          <>
+                            <textarea
+                              value={content.textContent}
+                              onChange={(e) => updateModuleContent(moduleIndex, contentIndex, 'textContent', e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                !content.textContent || content.textContent.trim().length === 0
+                                  ? 'border-red-300 bg-red-50'
+                                  : 'border-gray-300'
+                              }`}
+                              rows={3}
+                              placeholder="Text content *"
+                              required
+                            />
+                            {(!content.textContent || content.textContent.trim().length === 0) && (
+                              <p className="text-red-500 text-xs mt-1">Text content is required</p>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}

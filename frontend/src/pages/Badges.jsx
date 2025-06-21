@@ -67,13 +67,13 @@ const Badges = () => {
 
   const filteredEarnedBadges = selectedCategory === 'all' 
     ? earnedBadges 
-    : earnedBadges.filter(userBadge => userBadge.badge.category === selectedCategory);
+    : earnedBadges.filter(userBadge => userBadge.badge?.category === selectedCategory);
 
   const filteredAvailableBadges = selectedCategory === 'all'
     ? availableBadges
     : availableBadges.filter(badge => badge.category === selectedCategory);
 
-  const earnedBadgeIds = earnedBadges.map(userBadge => userBadge.badge._id);
+  const earnedBadgeIds = earnedBadges.map(userBadge => userBadge.badge?._id).filter(Boolean);
   const unearnedBadges = filteredAvailableBadges.filter(badge => !earnedBadgeIds.includes(badge._id));
 
   if (loading) {
@@ -101,7 +101,7 @@ const Badges = () => {
               <div className="text-sm text-gray-600">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{user.xp}</div>
+              <div className="text-2xl font-bold text-yellow-600">{user?.xp || 0}</div>
               <div className="text-sm text-gray-600">XP Points</div>
             </div>
           </div>

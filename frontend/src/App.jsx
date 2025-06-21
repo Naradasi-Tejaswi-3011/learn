@@ -6,6 +6,8 @@ import { useAuth } from './context/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
+import ErrorBoundary from './components/ErrorBoundary';
+import HealthCheck from './components/HealthCheck';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -14,6 +16,7 @@ import InstructorDashboard from './pages/InstructorDashboard';
 import CourseDetail from './pages/CourseDetail';
 import CoursePlayer from './pages/CoursePlayer';
 import CreateCourse from './pages/CreateCourse';
+import EditCourse from './pages/EditCourse';
 import Courses from './pages/Courses';
 import Notes from './pages/Notes';
 import Badges from './pages/Badges';
@@ -28,10 +31,14 @@ import StudyAnalytics from './pages/StudyAnalytics';
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user, loading } = useAuth();
 
+  // Don't show loading for too long
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -41,7 +48,8 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to={user.role === 'instructor' ? '/instructor' : '/dashboard'} replace />;
+    const redirectPath = user.role === 'instructor' ? '/instructor' : '/dashboard';
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;
@@ -53,6 +61,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      <HealthCheck />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -160,6 +169,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/instructor/edit-course/:id"
+          element={
+            <ProtectedRoute requiredRole="instructor">
+              <EditCourse />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -170,21 +187,25 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-        />
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+            }}
+          />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -2,25 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { 
-  BookOpen, 
-  Play, 
-  Award, 
-  TrendingUp, 
-  Clock, 
+import {
+  BookOpen,
+  Play,
+  Award,
+  TrendingUp,
+  Clock,
   Target,
   Star,
   ChevronRight,
   Calendar,
   Flame,
   Mic,
-  Brain
+  Brain,
+  MessageSquare,
+  CheckCircle,
+  HelpCircle
 } from 'lucide-react';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const [progress, setProgress] = useState([]);
   const [badges, setBadges] = useState([]);
+  const [myQuestions, setMyQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalCourses: 0,
@@ -52,7 +56,7 @@ const StudentDashboard = () => {
           axios.get(`${import.meta.env.VITE_API_URL}/users/profile`)
         ]);
 
-        setProgress(progressRes.data.progress);
+        setProgress(progressRes.data.progress || []);
         setBadges(badgesRes.data.earnedBadges || []);
         setStats({
           totalCourses: profileRes.data.stats?.totalCourses || 0,
@@ -60,6 +64,17 @@ const StudentDashboard = () => {
           totalXP: profileRes.data.stats?.xp || 0,
           currentStreak: profileRes.data.stats?.streak?.current || 0
         });
+
+        // Fetch student's questions
+        try {
+          if (user && user._id) {
+            const questionsRes = await axios.get(`${import.meta.env.VITE_API_URL}/questions/student/${user._id}`);
+            setMyQuestions(questionsRes.data.questions || []);
+          }
+        } catch (questionError) {
+          console.log('Questions not available yet');
+          setMyQuestions([]);
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -89,7 +104,7 @@ const StudentDashboard = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user.name}! 👋
+            Welcome back, {user?.name || 'Student'}! 👋
           </h1>
           <p className="text-gray-600 mt-2">
             Continue your learning journey and reach new milestones.
@@ -175,53 +190,55 @@ const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {progress.slice(0, 3).map((courseProgress) => (
+                  {progress.slice(0, 3).filter(courseProgress => courseProgress && courseProgress.course).map((courseProgress) => (
                     <div key={courseProgress._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
                             <h3 className="font-semibold text-gray-900">
-                              {courseProgress.course.title}
+                              {courseProgress.course?.title || 'Course Title'}
                             </h3>
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              courseProgress.overallProgress === 100
+                              (courseProgress.overallProgress || 0) === 100
                                 ? 'bg-green-100 text-green-800'
-                                : courseProgress.overallProgress > 0
+                                : (courseProgress.overallProgress || 0) > 0
                                 ? 'bg-blue-100 text-blue-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {courseProgress.overallProgress === 100 ? 'Completed' : 'In Progress'}
+                              {(courseProgress.overallProgress || 0) === 100 ? 'Completed' : 'In Progress'}
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-3">
-                            {courseProgress.completedModules} of {courseProgress.totalModules} modules completed
+                            {courseProgress.completedModules || 0} of {courseProgress.totalModules || 0} modules completed
                           </p>
                           <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
                             <div
                               className={`h-3 rounded-full transition-all duration-500 ${
-                                courseProgress.overallProgress === 100
+                                (courseProgress.overallProgress || 0) === 100
                                   ? 'bg-green-500'
                                   : 'bg-primary-600'
                               }`}
-                              style={{ width: `${courseProgress.overallProgress}%` }}
+                              style={{ width: `${courseProgress.overallProgress || 0}%` }}
                             ></div>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-900">
-                              {Math.round(courseProgress.overallProgress)}% complete
+                              {Math.round(courseProgress.overallProgress || 0)}% complete
                             </span>
                             <span className="text-sm text-gray-600">
                               {formatTimeSpent(courseProgress.totalTimeSpent || 0)}
                             </span>
                           </div>
                         </div>
-                        <Link
-                          to={`/learn/${courseProgress.course._id}`}
-                          className="ml-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          {courseProgress.overallProgress === 100 ? 'Review' : 'Continue'}
-                        </Link>
+                        {courseProgress.course?._id && (
+                          <Link
+                            to={`/learn/${courseProgress.course._id}`}
+                            className="ml-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            {(courseProgress.overallProgress || 0) === 100 ? 'Review' : 'Continue'}
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -242,12 +259,12 @@ const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {badges.slice(0, 3).map((userBadge) => (
+                  {badges.slice(0, 3).filter(userBadge => userBadge && userBadge.badge).map((userBadge) => (
                     <div key={userBadge._id} className="flex items-center space-x-3">
-                      <div className="text-2xl">{userBadge.badge.icon}</div>
+                      <div className="text-2xl">{userBadge.badge?.icon || '🏆'}</div>
                       <div>
-                        <p className="font-medium text-gray-900">{userBadge.badge.name}</p>
-                        <p className="text-sm text-gray-600">{userBadge.badge.description}</p>
+                        <p className="font-medium text-gray-900">{userBadge.badge?.name || 'Badge'}</p>
+                        <p className="text-sm text-gray-600">{userBadge.badge?.description || 'Achievement unlocked'}</p>
                       </div>
                     </div>
                   ))}
@@ -321,6 +338,67 @@ const StudentDashboard = () => {
                   <span>View All Badges</span>
                 </Link>
               </div>
+            </div>
+
+            {/* My Questions & Answers */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">My Questions & Answers</h3>
+                <Link
+                  to="/courses"
+                  className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                >
+                  Ask a question
+                </Link>
+              </div>
+
+              {myQuestions.length === 0 ? (
+                <div className="text-center py-6">
+                  <HelpCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 mb-2">No questions asked yet</p>
+                  <p className="text-xs text-gray-500">Ask questions on course pages to get help from instructors</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myQuestions.slice(0, 3).filter(question => question && question._id).map((question) => (
+                    <div key={question._id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-gray-900 text-sm line-clamp-2">
+                          {question.question || 'Question'}
+                        </h4>
+                        <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
+                          question.answer
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {question.answer ? (
+                            <><CheckCircle className="h-3 w-3 inline mr-1" />Answered</>
+                          ) : (
+                            <><Clock className="h-3 w-3 inline mr-1" />Pending</>
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        {question.courseName || 'Course'} • {question.createdAt ? new Date(question.createdAt).toLocaleDateString() : 'Recently'}
+                      </p>
+                      {question.answer && (
+                        <div className="bg-green-50 rounded p-2 mt-2">
+                          <p className="text-sm text-green-800 line-clamp-2">
+                            <strong>Answer:</strong> {question.answer}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {myQuestions.length > 3 && (
+                    <div className="text-center pt-2">
+                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                        View all {myQuestions.length} questions
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

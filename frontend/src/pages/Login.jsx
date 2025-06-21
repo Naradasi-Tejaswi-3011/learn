@@ -25,13 +25,28 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    const result = await login(formData.email, formData.password);
-    
-    if (result.success) {
-      // Navigation will be handled by the AuthContext and App component
+    try {
+      const result = await login(formData.email, formData.password);
+
+      if (result.success && result.user) {
+        console.log('✅ Login successful, navigating to dashboard...');
+
+        // Navigate based on user role
+        if (result.user.role === 'instructor') {
+          navigate('/instructor');
+        } else if (result.user.role === 'student') {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
+      } else {
+        console.error('❌ Login failed:', result.message);
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

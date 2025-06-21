@@ -8,8 +8,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // Configure axios defaults
 axios.defaults.baseURL = API_BASE_URL;
+axios.defaults.timeout = 10000;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Auth reducer
+// Simple auth reducer
 const authReducer = (state, action) => {
   switch (action.type) {
     case 'SET_LOADING':
@@ -30,45 +32,30 @@ const authReducer = (state, action) => {
 const initialState = {
   user: null,
   token: localStorage.getItem('token'),
-  loading: true,
+  loading: false,
   error: null
 };
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Set auth token in axios headers
-  useEffect(() => {
-    if (state.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-      localStorage.setItem('token', state.token);
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('token');
-    }
-  }, [state.token]);
-
   // Load user on app start
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem('token');
-      console.log('Loading user with token:', token ? 'Token exists' : 'No token');
 
       if (token) {
         try {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           dispatch({ type: 'SET_TOKEN', payload: token });
-          console.log('Making request to /auth/me');
+          
           const response = await axios.get('/auth/me');
-          console.log('User loaded successfully:', response.data.user);
           dispatch({ type: 'SET_USER', payload: response.data.user });
         } catch (error) {
-          console.error('Load user error:', error);
-          console.error('Error response:', error.response?.data);
           localStorage.removeItem('token');
+          delete axios.defaults.headers.common['Authorization'];
           dispatch({ type: 'LOGOUT' });
         }
-      } else {
-        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 
@@ -78,77 +65,91 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (email, password) => {
     try {
-      console.log('Attempting login with:', email);
-      console.log('API Base URL:', API_BASE_URL);
-
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      const response = await axios.post('/auth/login', {
-        email,
-        password
-      });
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
 
-      console.log('Login response:', response.data);
-
+      const response = await axios.post('/auth/login', { email, password });
       const { token, user } = response.data;
+
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
+
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       dispatch({ type: 'SET_TOKEN', payload: token });
       dispatch({ type: 'SET_USER', payload: user });
 
       toast.success(`Welcome back, ${user.name}!`);
-
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
-      console.error('Login error:', error);
-      console.error('Error response:', error.response?.data);
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
+      dispatch({ type: 'LOGOUT' });
 
-      const message = error.response?.data?.message || 'Login failed';
+      let message = 'Login failed. Please try again.';
+      
+      if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+        message = 'Cannot connect to server. Please ensure the backend is running.';
+      } else if (error.response?.status === 401) {
+        message = 'Invalid email or password.';
+      } else if (error.response?.data?.message) {
+        message = error.response.data.message;
+      }
+
       dispatch({ type: 'SET_ERROR', payload: message });
       toast.error(message);
       return { success: false, message };
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
   // Register function
   const register = async (userData) => {
     try {
-      console.log('Attempting registration with:', userData);
-      console.log('API Base URL:', API_BASE_URL);
-
       dispatch({ type: 'SET_LOADING', payload: true });
 
       const response = await axios.post('/auth/register', userData);
-
-      console.log('Registration response:', response.data);
-
       const { token, user } = response.data;
+
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       dispatch({ type: 'SET_TOKEN', payload: token });
       dispatch({ type: 'SET_USER', payload: user });
 
-      toast.success(`Welcome to LearnHub, ${user.name}!`);
-
-      return { success: true };
+      toast.success(`Welcome, ${user.name}!`);
+      return { success: true, user };
     } catch (error) {
-      console.error('Registration error:', error);
-      console.error('Error response:', error.response?.data);
+      let message = 'Registration failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      }
 
-      const message = error.response?.data?.message || error.message || 'Registration failed';
       dispatch({ type: 'SET_ERROR', payload: message });
       toast.error(message);
       return { success: false, message };
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
   // Logout function
   const logout = () => {
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
     dispatch({ type: 'LOGOUT' });
     toast.success('Logged out successfully');
   };
 
   // Update user function
   const updateUser = (userData) => {
-    dispatch({ type: 'SET_USER', payload: { ...state.user, ...userData } });
+    dispatch({ type: 'SET_USER', payload: userData });
   };
 
   const value = {
@@ -172,7 +173,16 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return {
+      user: null,
+      token: null,
+      loading: false,
+      error: null,
+      login: async () => ({ success: false, message: 'Auth not initialized' }),
+      register: async () => ({ success: false, message: 'Auth not initialized' }),
+      logout: () => {},
+      updateUser: () => {}
+    };
   }
   return context;
 };

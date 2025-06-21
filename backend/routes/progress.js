@@ -145,4 +145,70 @@ router.put('/:courseId/module/:moduleId', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/progress/course/:courseId/students
+// @desc    Get all student progress for a specific course (Instructor only)
+// @access  Private
+router.get('/course/:courseId/students', auth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // Verify the course exists and user is the instructor
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only the course instructor can view student progress.'
+      });
+    }
+
+    // Get all progress records for this course
+    const progressRecords = await Progress.find({ course: courseId })
+      .populate('user', 'name email avatar')
+      .sort({ updatedAt: -1 });
+
+    // Format the response
+    const students = progressRecords.map(progress => ({
+      _id: progress._id,
+      student: {
+        _id: progress.user._id,
+        name: progress.user.name,
+        email: progress.user.email,
+        avatar: progress.user.avatar
+      },
+      completionPercentage: progress.completionPercentage,
+      completedModules: progress.completedModules.length,
+      totalModules: progress.totalModules,
+      lastAccessed: progress.lastAccessed,
+      timeSpent: progress.timeSpent,
+      xpEarned: progress.xpEarned,
+      enrolledAt: progress.createdAt,
+      lastActivity: progress.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      students,
+      courseInfo: {
+        title: course.title,
+        totalModules: course.modules.length,
+        studentsCount: students.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Get course students progress error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router;

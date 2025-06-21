@@ -53,7 +53,7 @@ const Navbar = () => {
             {user ? (
               <>
                 {/* User-specific navigation */}
-                {user.role === 'student' ? (
+                {user?.role === 'student' ? (
                   <>
                     <Link
                       to="/dashboard"
@@ -89,19 +89,19 @@ const Navbar = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <Award className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-medium text-gray-700">{user.xp} XP</span>
+                    <span className="text-sm font-medium text-gray-700">{user?.xp || 0} XP</span>
                     <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
-                      Level {user.level}
+                      Level {user?.level || 1}
                     </span>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <div className="h-8 w-8 bg-primary-600 rounded-full flex items-center justify-center">
                       <span className="text-white text-sm font-medium">
-                        {user.name.charAt(0).toUpperCase()}
+                        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">{user.name}</span>
+                    <span className="text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
                   </div>
 
                   <button
@@ -158,7 +158,7 @@ const Navbar = () => {
 
             {user ? (
               <>
-                {user.role === 'student' ? (
+                {user?.role === 'student' ? (
                   <>
                     <Link
                       to="/dashboard"
@@ -202,12 +202,12 @@ const Navbar = () => {
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="h-8 w-8 bg-primary-600 rounded-full flex items-center justify-center">
                       <span className="text-white text-sm font-medium">
-                        {user.name.charAt(0).toUpperCase()}
+                        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.xp} XP • Level {user.level}</p>
+                      <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+                      <p className="text-xs text-gray-500">{user?.xp || 0} XP • Level {user?.level || 1}</p>
                     </div>
                   </div>
                   <button

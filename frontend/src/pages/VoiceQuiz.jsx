@@ -88,7 +88,7 @@ const VoiceQuiz = () => {
 
   const generateQuestions = () => {
     // Generate questions based on completed courses
-    const courseTopics = completedCourses.map(course => course.course.title);
+    const courseTopics = completedCourses.map(course => course.course?.title || 'Course Topic');
     
     const sampleQuestions = [
       {
@@ -200,7 +200,7 @@ const VoiceQuiz = () => {
       });
 
       // Update user data
-      updateUser({ xp: user.xp + xpEarned });
+      updateUser({ xp: (user?.xp || 0) + xpEarned });
 
       // Check for badge eligibility
       if (percentage >= 90) {

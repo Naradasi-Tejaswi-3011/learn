@@ -132,6 +132,63 @@ router.post('/', [
       });
     }
 
+    // Validate modules and content
+    if (req.body.modules && req.body.modules.length > 0) {
+      for (let i = 0; i < req.body.modules.length; i++) {
+        const module = req.body.modules[i];
+
+        // Check module title
+        if (!module.title || module.title.trim().length < 3) {
+          return res.status(400).json({
+            success: false,
+            message: `Module ${i + 1} must have a title (at least 3 characters)`
+          });
+        }
+
+        // Check module content
+        if (module.content && module.content.length > 0) {
+          for (let j = 0; j < module.content.length; j++) {
+            const content = module.content[j];
+
+            // Check content title
+            if (!content.title || content.title.trim().length === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Module ${i + 1}, Content ${j + 1} must have a title`
+              });
+            }
+
+            // Check content based on type
+            if (content.type === 'video') {
+              if (!content.videoUrl || content.videoUrl.trim().length === 0) {
+                return res.status(400).json({
+                  success: false,
+                  message: `Module ${i + 1}, Content ${j + 1} (video) must have a video URL`
+                });
+              }
+            } else if (content.type === 'text') {
+              if (!content.textContent || content.textContent.trim().length === 0) {
+                return res.status(400).json({
+                  success: false,
+                  message: `Module ${i + 1}, Content ${j + 1} (text) must have text content`
+                });
+              }
+            }
+
+            // Set order if not provided
+            if (!content.order) {
+              content.order = j + 1;
+            }
+          }
+        }
+
+        // Set module order if not provided
+        if (!module.order) {
+          module.order = i + 1;
+        }
+      }
+    }
+
     const courseData = {
       ...req.body,
       instructor: req.user._id

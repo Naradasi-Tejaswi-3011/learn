@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  Play, 
-  Pause, 
-  SkipForward, 
-  SkipBack, 
-  BookOpen, 
+import CourseQA from '../components/CourseQA';
+import {
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
+  BookOpen,
   Award,
   CheckCircle,
   Clock,
-  FileText
+  FileText,
+  MessageSquare
 } from 'lucide-react';
 
 const CoursePlayer = () => {
@@ -62,9 +64,9 @@ const CoursePlayer = () => {
 
   // Auto-track progress for YouTube videos based on time spent
   useEffect(() => {
-    if (!course || !course.modules[currentModule]) return;
+    if (!course || !course.modules?.[currentModule]) return;
 
-    const currentContentData = course.modules[currentModule].content[currentContent];
+    const currentContentData = course.modules?.[currentModule]?.content?.[currentContent];
     if (currentContentData?.type !== 'video') return;
 
     // Check if it's a YouTube video
@@ -165,8 +167,8 @@ const CoursePlayer = () => {
       setLastProgressUpdate(Math.max(progressThreshold, timeThreshold));
 
       try {
-        const module = course.modules[currentModule];
-        const content = module.content[currentContent];
+        const module = course.modules?.[currentModule];
+        const content = module?.content?.[currentContent];
         const timeSpent = contentStartTime ? Math.floor((Date.now() - contentStartTime) / 1000) : 0;
 
         console.log('Updating progress:', {
@@ -240,8 +242,8 @@ const CoursePlayer = () => {
   const markContentComplete = async () => {
     if (isContentCompleted || !canMarkComplete()) return;
 
-    const module = course.modules[currentModule];
-    const content = module.content[currentContent];
+    const module = course.modules?.[currentModule];
+    const content = module?.content?.[currentContent];
 
     // Calculate time spent
     const timeSpent = contentStartTime ? Math.floor((Date.now() - contentStartTime) / 1000) : 0;
@@ -276,12 +278,12 @@ const CoursePlayer = () => {
   };
 
   const navigateContent = (direction) => {
-    const module = course.modules[currentModule];
+    const module = course.modules?.[currentModule];
     
     if (direction === 'next') {
-      if (currentContent < module.content.length - 1) {
+      if (currentContent < (module?.content?.length || 0) - 1) {
         setCurrentContent(currentContent + 1);
-      } else if (currentModule < course.modules.length - 1) {
+      } else if (currentModule < (course.modules?.length || 0) - 1) {
         setCurrentModule(currentModule + 1);
         setCurrentContent(0);
       }
@@ -290,7 +292,7 @@ const CoursePlayer = () => {
         setCurrentContent(currentContent - 1);
       } else if (currentModule > 0) {
         setCurrentModule(currentModule - 1);
-        setCurrentContent(course.modules[currentModule - 1].content.length - 1);
+        setCurrentContent((course.modules?.[currentModule - 1]?.content?.length || 1) - 1);
       }
     }
   };
@@ -303,7 +305,7 @@ const CoursePlayer = () => {
     );
   }
 
-  if (!course || !course.modules.length) {
+  if (!course || !course.modules?.length) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -314,8 +316,8 @@ const CoursePlayer = () => {
     );
   }
 
-  const currentModuleData = course.modules[currentModule];
-  const currentContentData = currentModuleData.content[currentContent];
+  const currentModuleData = course.modules?.[currentModule];
+  const currentContentData = currentModuleData?.content?.[currentContent];
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -325,15 +327,15 @@ const CoursePlayer = () => {
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-bold truncate text-gray-900">{course.course?.title || 'Course'}</h2>
             <p className="text-sm text-gray-600">
-              Module {currentModule + 1} of {course.modules.length}
+              Module {currentModule + 1} of {course.modules?.length || 0}
             </p>
           </div>
 
           <div className="p-4">
-            {course.modules.map((module, moduleIndex) => (
+            {course.modules?.map((module, moduleIndex) => (
               <div key={module._id} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-sm">{module.title}</h3>
+                  <h3 className="font-semibold text-sm">{module?.title || 'Module'}</h3>
                   <span className="text-xs text-gray-400">
                     {module.content.length} lessons
                   </span>
@@ -357,7 +359,7 @@ const CoursePlayer = () => {
                         {content.type === 'video' && <Play className="h-4 w-4" />}
                         {content.type === 'text' && <FileText className="h-4 w-4" />}
                         {content.type === 'quiz' && <Award className="h-4 w-4" />}
-                        <span className="truncate">{content.title}</span>
+                        <span className="truncate">{content?.title || 'Content'}</span>
                       </div>
                     </button>
                   ))}
@@ -373,9 +375,9 @@ const CoursePlayer = () => {
           <div className="bg-gray-800 p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold">{currentContentData.title}</h1>
+                <h1 className="text-xl font-bold">{currentContentData?.title || 'Content'}</h1>
                 <p className="text-gray-400 text-sm">
-                  {currentModuleData.title} • Lesson {currentContent + 1} of {currentModuleData.content.length}
+                  {currentModuleData?.title || 'Module'} • Lesson {currentContent + 1} of {currentModuleData?.content?.length || 0}
                 </p>
               </div>
               
@@ -404,8 +406,8 @@ const CoursePlayer = () => {
                 <button
                   onClick={() => navigateContent('next')}
                   disabled={
-                    currentModule === course.modules.length - 1 && 
-                    currentContent === currentModuleData.content.length - 1
+                    currentModule === (course.modules?.length || 0) - 1 &&
+                    currentContent === (currentModuleData?.content?.length || 0) - 1
                   }
                   className="p-2 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -653,6 +655,14 @@ const CoursePlayer = () => {
                 style={{ width: `${progress?.overallProgress || 0}%` }}
               ></div>
             </div>
+          </div>
+
+          {/* Q&A Section */}
+          <div className="mt-8 max-w-4xl mx-auto">
+            <CourseQA
+              courseId={courseId}
+              courseName={course.course?.title || 'Course'}
+            />
           </div>
         </div>
       </div>

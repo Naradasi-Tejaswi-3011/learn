@@ -163,11 +163,11 @@ const Courses = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm font-medium">{course.rating.average.toFixed(1)}</span>
-                      <span className="text-sm text-gray-500">({course.rating.count})</span>
+                      <span className="text-sm font-medium">{course.rating?.average?.toFixed(1) || '0.0'}</span>
+                      <span className="text-sm text-gray-500">({course.rating?.count || 0})</span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      by {course.instructor.name}
+                      by {course.instructor?.name || 'Unknown Instructor'}
                     </div>
                   </div>
                   {course.tags && course.tags.length > 0 && (

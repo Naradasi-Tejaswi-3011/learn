@@ -6,6 +6,17 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// @route   GET /api/auth/test
+// @desc    Test backend connectivity
+// @access  Public
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Generate JWT token
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {

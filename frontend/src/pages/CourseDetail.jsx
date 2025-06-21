@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Play, 
-  Clock, 
-  Users, 
-  Star, 
-  BookOpen, 
+import CourseQA from '../components/CourseQA';
+import {
+  Play,
+  Clock,
+  Users,
+  Star,
+  BookOpen,
   Award,
   CheckCircle,
   Lock
@@ -135,19 +136,19 @@ const CourseDetail = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-yellow-400" />
-                  <span>{course.rating.average.toFixed(1)} ({course.rating.count} reviews)</span>
+                  <span>{course.rating?.average?.toFixed(1) || '0.0'} ({course.rating?.count || 0} reviews)</span>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 mb-6">
                 <img 
-                  src={course.instructor.avatar || `https://ui-avatars.com/api/?name=${course.instructor.name}&background=3b82f6&color=fff`}
-                  alt={course.instructor.name}
+                  src={course.instructor?.avatar || `https://ui-avatars.com/api/?name=${course.instructor?.name || 'Instructor'}&background=3b82f6&color=fff`}
+                  alt={course.instructor?.name || 'Instructor'}
                   className="h-10 w-10 rounded-full"
                 />
                 <div>
-                  <p className="font-medium">Instructor: {course.instructor.name}</p>
-                  {course.instructor.bio && (
+                  <p className="font-medium">Instructor: {course.instructor?.name || 'Unknown'}</p>
+                  {course.instructor?.bio && (
                     <p className="text-sm text-primary-100">{course.instructor.bio}</p>
                   )}
                 </div>
@@ -229,12 +230,12 @@ const CourseDetail = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Content</h2>
               <div className="space-y-4">
-                {course.modules.map((module, index) => (
+                {course.modules?.map((module, index) => (
                   <div key={module._id} className="border border-gray-200 rounded-lg">
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">
-                          Module {index + 1}: {module.title}
+                          Module {index + 1}: {module?.title || 'Module'}
                         </h3>
                         <div className="flex items-center space-x-2 text-sm text-gray-600">
                           <BookOpen className="h-4 w-4" />
@@ -286,6 +287,9 @@ const CourseDetail = () => {
                 </ul>
               </div>
             )}
+
+            {/* Q&A Section */}
+            <CourseQA courseId={course._id} courseName={course.title} />
           </div>
 
           {/* Sidebar */}
@@ -300,7 +304,7 @@ const CourseDetail = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Total Modules</span>
-                  <span className="font-semibold">{course.modules.length}</span>
+                  <span className="font-semibold">{course.modules?.length || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Total Duration</span>
@@ -310,7 +314,7 @@ const CourseDetail = () => {
                   <span className="text-gray-600">Average Rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-400" />
-                    <span className="font-semibold">{course.rating.average.toFixed(1)}</span>
+                    <span className="font-semibold">{course.rating?.average?.toFixed(1) || '0.0'}</span>
                   </div>
                 </div>
               </div>
