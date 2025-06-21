@@ -33,6 +33,7 @@ const InstructorDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false); // Start with false for immediate UI
   const [refreshing, setRefreshing] = useState(false);
+  const [silentRefresh, setSilentRefresh] = useState(false); // For background updates
   const [activeTab, setActiveTab] = useState('overview');
   const [studentQuestions, setStudentQuestions] = useState([]);
   const [selectedCourseForProgress, setSelectedCourseForProgress] = useState(null);
@@ -48,14 +49,23 @@ const InstructorDashboard = () => {
     pendingQuestions: 0
   });
 
-  const fetchDashboardData = async (forceRefresh = false) => {
+  const fetchDashboardData = async (forceRefresh = false, silent = false) => {
     try {
-      setRefreshing(true);
-      console.log('=== INSTRUCTOR DASHBOARD API CALL ===');
-      console.log('Fetching dashboard data for instructor:', user?._id);
-      console.log('User object:', user);
-      console.log('User role:', user?.role);
-      console.log('Force refresh:', forceRefresh);
+      // Only show loading indicators if not silent refresh
+      if (!silent) {
+        setRefreshing(true);
+      } else {
+        setSilentRefresh(true);
+      }
+
+      // Only log for non-silent refreshes to reduce console noise
+      if (!silent) {
+        console.log('=== INSTRUCTOR DASHBOARD API CALL ===');
+        console.log('Fetching dashboard data for instructor:', user?._id);
+        console.log('User object:', user);
+        console.log('User role:', user?.role);
+        console.log('Force refresh:', forceRefresh);
+      }
 
       // Clear existing data if force refresh
       if (forceRefresh) {
@@ -77,25 +87,31 @@ const InstructorDashboard = () => {
 
       // Fetch courses with shorter timeout and better error handling
       if (user?._id) {
-        console.log('Fetching courses for instructor:', user._id);
-        console.log('API URL:', `${import.meta.env.VITE_API_URL}/courses`);
-        console.log('Params being sent:', { instructor: user._id });
+        if (!silent) {
+          console.log('Fetching courses for instructor:', user._id);
+          console.log('API URL:', `${import.meta.env.VITE_API_URL}/courses`);
+          console.log('Params being sent:', { instructor: user._id });
+        }
 
         const apiUrl = `${import.meta.env.VITE_API_URL}/courses`;
         const params = { instructor: user._id };
 
-        console.log('Making API call to:', apiUrl);
-        console.log('With params:', params);
-        console.log('Full URL will be:', `${apiUrl}?instructor=${user._id}`);
-        console.log('Axios defaults:', axios.defaults);
-        console.log('Authorization header:', axios.defaults.headers.common['Authorization']);
+        if (!silent) {
+          console.log('Making API call to:', apiUrl);
+          console.log('With params:', params);
+          console.log('Full URL will be:', `${apiUrl}?instructor=${user._id}`);
+          console.log('Axios defaults:', axios.defaults);
+          console.log('Authorization header:', axios.defaults.headers.common['Authorization']);
+        }
 
         const coursesRes = await axios.get(apiUrl, {
           params: params,
           timeout: 1000 // Ultra-fast timeout for immediate response
         });
 
-        console.log('✅ API call successful!');
+        if (!silent) {
+          console.log('✅ API call successful!');
+        }
 
         console.log('Courses API response:', coursesRes.data);
         console.log('Number of courses found:', coursesRes.data.courses?.length || 0);
@@ -137,6 +153,7 @@ const InstructorDashboard = () => {
       });
     } finally {
       setRefreshing(false);
+      setSilentRefresh(false);
     }
   };
 
@@ -176,8 +193,8 @@ const InstructorDashboard = () => {
       // Load data immediately without blocking UI
       fetchDashboardData();
 
-      // Set up real-time updates every 5 seconds for instructor dashboard
-      const interval = setInterval(fetchDashboardData, 5000);
+      // Set up real-time updates every 5 seconds for instructor dashboard (silent)
+      const interval = setInterval(() => fetchDashboardData(false, true), 5000);
 
       return () => clearInterval(interval);
     } else {
@@ -361,7 +378,7 @@ const InstructorDashboard = () => {
               className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center disabled:opacity-50"
             >
               <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Force Refresh'}
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             <Link
               to="/instructor/create-course"
@@ -408,8 +425,8 @@ const InstructorDashboard = () => {
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {refreshing ? (
-                // Show skeleton loading when refreshing
+              {loading ? (
+                // Show skeleton loading only on initial load, not during refresh
                 <>
                   <SkeletonCard />
                   <SkeletonCard />
@@ -741,8 +758,8 @@ const InstructorDashboard = () => {
               </div>
             </div>
 
-            {refreshing ? (
-              // Show skeleton loading for courses
+            {loading ? (
+              // Show skeleton loading for courses only on initial load
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="bg-gray-50 rounded-lg p-6 animate-pulse">
