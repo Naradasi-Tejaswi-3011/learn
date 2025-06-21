@@ -157,6 +157,39 @@ const CreateCourse = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Client-side validation
+    const errors = [];
+
+    if (!courseData.title || courseData.title.trim().length < 3) {
+      errors.push('Course title must be at least 3 characters long');
+    }
+
+    if (!courseData.description || courseData.description.trim().length < 10) {
+      errors.push('Course description must be at least 10 characters long');
+    }
+
+    if (modules.length === 0) {
+      errors.push('Please add at least one module to your course');
+    }
+
+    // Check if modules have content
+    const modulesWithoutContent = modules.filter(module => module.content.length === 0);
+    if (modulesWithoutContent.length > 0) {
+      errors.push('All modules must have at least one piece of content');
+    }
+
+    // Check if module titles are filled
+    const modulesWithoutTitle = modules.filter(module => !module.title || module.title.trim().length < 3);
+    if (modulesWithoutTitle.length > 0) {
+      errors.push('All modules must have a title (at least 3 characters)');
+    }
+
+    if (errors.length > 0) {
+      alert('Please fix the following errors:\n\n' + errors.join('\n'));
+      setLoading(false);
+      return;
+    }
+
     try {
       console.log('Creating course with data:', { ...courseData, modules });
 
@@ -168,7 +201,7 @@ const CreateCourse = () => {
       console.log('Course creation response:', response.data);
 
       if (response.data.success) {
-        alert('Course created successfully!');
+        alert('🎉 Course created successfully! Students can now enroll in your course.');
         // Add a small delay to ensure the course is saved before navigating
         setTimeout(() => {
           navigate('/instructor');
@@ -177,7 +210,17 @@ const CreateCourse = () => {
     } catch (error) {
       console.error('Error creating course:', error);
       console.error('Error details:', error.response?.data);
-      alert(`Failed to create course: ${error.response?.data?.message || error.message}`);
+
+      let errorMessage = 'Failed to create course. ';
+
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const validationErrors = error.response.data.errors.map(err => err.msg).join('\n');
+        errorMessage += 'Validation errors:\n' + validationErrors;
+      } else {
+        errorMessage += error.response?.data?.message || error.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -210,17 +253,25 @@ const CreateCourse = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Title *
+                  Course Title * <span className="text-xs text-gray-500">(minimum 3 characters)</span>
                 </label>
                 <input
                   type="text"
                   name="title"
                   required
+                  minLength={3}
                   value={courseData.title}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Enter course title"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    courseData.title && courseData.title.length < 3
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Enter course title (e.g., Complete Web Development Bootcamp)"
                 />
+                {courseData.title && courseData.title.length < 3 && (
+                  <p className="text-red-500 text-xs mt-1">Title must be at least 3 characters long</p>
+                )}
               </div>
 
               <div>
@@ -274,17 +325,28 @@ const CreateCourse = () => {
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description *
+                  Description * <span className="text-xs text-gray-500">(minimum 10 characters)</span>
                 </label>
                 <textarea
                   name="description"
                   required
+                  minLength={10}
                   value={courseData.description}
                   onChange={handleInputChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Detailed course description"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    courseData.description && courseData.description.length < 10
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Provide a detailed description of what students will learn in this course..."
                 />
+                {courseData.description && courseData.description.length < 10 && (
+                  <p className="text-red-500 text-xs mt-1">Description must be at least 10 characters long</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {courseData.description.length}/1000 characters
+                </p>
               </div>
             </div>
           </div>
@@ -361,19 +423,29 @@ const CreateCourse = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input
-                      type="text"
-                      value={module.title}
-                      onChange={(e) => updateModule(moduleIndex, 'title', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Module title"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        value={module.title}
+                        onChange={(e) => updateModule(moduleIndex, 'title', e.target.value)}
+                        className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full ${
+                          module.title && module.title.length < 3
+                            ? 'border-red-300 bg-red-50'
+                            : 'border-gray-300'
+                        }`}
+                        placeholder="Module title (minimum 3 characters)"
+                        required
+                      />
+                      {module.title && module.title.length < 3 && (
+                        <p className="text-red-500 text-xs mt-1">Module title must be at least 3 characters</p>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={module.description}
                       onChange={(e) => updateModule(moduleIndex, 'description', e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Module description"
+                      placeholder="Module description (optional)"
                     />
                   </div>
 

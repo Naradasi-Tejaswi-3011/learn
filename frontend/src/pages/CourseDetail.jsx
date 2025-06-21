@@ -24,33 +24,61 @@ const CourseDetail = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
+        console.log('Fetching course with ID:', id);
+        console.log('Current user:', user);
+
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/courses/${id}`);
+
+        console.log('Course fetch response:', response.data);
+
         setCourse(response.data.course);
         setIsEnrolled(response.data.isEnrolled);
       } catch (error) {
         console.error('Error fetching course:', error);
+        console.error('Error response:', error.response?.data);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCourse();
-  }, [id]);
+  }, [id, user]);
 
   const handleEnroll = async () => {
     if (!user) {
-      // Redirect to login
+      alert('Please log in to enroll in courses.');
+      return;
+    }
+
+    if (user.role !== 'student') {
+      alert('Only students can enroll in courses. Please switch to a student account.');
       return;
     }
 
     setEnrolling(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/courses/${id}/enroll`);
-      setIsEnrolled(true);
-      alert('Successfully enrolled in the course!');
+      console.log('Attempting to enroll user:', user);
+      console.log('Course ID:', id);
+
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/courses/${id}/enroll`);
+
+      console.log('Enrollment response:', response.data);
+
+      if (response.data.success) {
+        setIsEnrolled(true);
+        alert('🎉 Successfully enrolled in the course! You can now start learning.');
+
+        // Optionally redirect to the course player
+        setTimeout(() => {
+          window.location.href = `/learn/${id}`;
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error enrolling:', error);
-      alert('Failed to enroll. Please try again.');
+      console.error('Error response:', error.response?.data);
+
+      const errorMessage = error.response?.data?.message || 'Failed to enroll. Please try again.';
+      alert(`Enrollment failed: ${errorMessage}`);
     } finally {
       setEnrolling(false);
     }

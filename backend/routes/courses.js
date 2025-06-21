@@ -294,14 +294,32 @@ router.delete('/:id', [auth, isInstructor], async (req, res) => {
 // @access  Private (Student only)
 router.post('/:id/enroll', [auth, isStudent], async (req, res) => {
   try {
+    console.log('Enrollment attempt:', {
+      courseId: req.params.id,
+      userId: req.user._id,
+      userRole: req.user.role,
+      userName: req.user.name
+    });
+
     const course = await Course.findById(req.params.id);
 
-    if (!course || !course.isPublished) {
+    if (!course) {
+      console.log('Course not found:', req.params.id);
       return res.status(404).json({
         success: false,
-        message: 'Course not found or not published'
+        message: 'Course not found'
       });
     }
+
+    if (!course.isPublished) {
+      console.log('Course not published:', course.title);
+      return res.status(404).json({
+        success: false,
+        message: 'Course is not published yet'
+      });
+    }
+
+    console.log('Course found:', course.title, 'Published:', course.isPublished);
 
     // Check if already enrolled
     const existingProgress = await Progress.findOne({
@@ -310,6 +328,7 @@ router.post('/:id/enroll', [auth, isStudent], async (req, res) => {
     });
 
     if (existingProgress) {
+      console.log('User already enrolled in course');
       return res.status(400).json({
         success: false,
         message: 'Already enrolled in this course'
@@ -325,6 +344,8 @@ router.post('/:id/enroll', [auth, isStudent], async (req, res) => {
 
     await progress.save();
     await course.addStudent();
+
+    console.log('Enrollment successful for user:', req.user.name);
 
     res.json({
       success: true,

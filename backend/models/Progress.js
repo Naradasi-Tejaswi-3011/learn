@@ -285,10 +285,11 @@ progressSchema.methods.calculateOverallProgress = function() {
   }
 
   const totalProgress = this.moduleProgress.reduce((sum, module) => sum + module.progress, 0);
-  this.overallProgress = Math.round(totalProgress / this.moduleProgress.length);
-  
+  // Use more precise calculation and round to 1 decimal place
+  this.overallProgress = Math.round((totalProgress / this.moduleProgress.length) * 10) / 10;
+
   // Update status based on progress
-  if (this.overallProgress === 100) {
+  if (this.overallProgress >= 100) {
     this.status = 'completed';
     if (!this.completedAt) {
       this.completedAt = new Date();
@@ -349,7 +350,8 @@ progressSchema.methods.updateModuleProgress = function(moduleId, contentProgress
     const totalContentProgress = moduleProgressItem.contentProgress.reduce(
       (sum, cp) => sum + cp.progress, 0
     );
-    moduleProgressItem.progress = Math.round(totalContentProgress / moduleProgressItem.contentProgress.length);
+    // Use more precise calculation and round to 1 decimal place
+    moduleProgressItem.progress = Math.round((totalContentProgress / moduleProgressItem.contentProgress.length) * 10) / 10;
   }
 
   if (moduleProgressItem.progress === 100) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Play, 
@@ -15,6 +15,7 @@ import {
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(null);
   const [currentModule, setCurrentModule] = useState(0);
@@ -22,7 +23,10 @@ const CoursePlayer = () => {
   const [loading, setLoading] = useState(true);
   const [contentStartTime, setContentStartTime] = useState(null);
   const [videoWatchTime, setVideoWatchTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [isContentCompleted, setIsContentCompleted] = useState(false);
+  const [lastProgressUpdate, setLastProgressUpdate] = useState(0);
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -52,18 +56,68 @@ const CoursePlayer = () => {
     setContentStartTime(Date.now());
     setIsContentCompleted(false);
     setVideoWatchTime(0);
+    setVideoDuration(0);
+    setLastProgressUpdate(0);
   }, [currentModule, currentContent]);
+
+  // Auto-track progress for YouTube videos based on time spent
+  useEffect(() => {
+    if (!course || !course.modules[currentModule]) return;
+
+    const currentContentData = course.modules[currentModule].content[currentContent];
+    if (currentContentData?.type !== 'video') return;
+
+    // Check if it's a YouTube video
+    const url = currentContentData.videoUrl;
+    const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
+
+    if (isYouTube) {
+      // Set a default duration for YouTube videos (can be adjusted)
+      const defaultDuration = 600; // 10 minutes default
+      setVideoDuration(defaultDuration);
+
+      // Start tracking progress every 5 seconds
+      const interval = setInterval(() => {
+        if (isContentCompleted) {
+          clearInterval(interval);
+          return;
+        }
+
+        const timeSpent = contentStartTime ? (Date.now() - contentStartTime) / 1000 : 0;
+        const estimatedProgress = Math.min(timeSpent, defaultDuration);
+
+        setVideoWatchTime(estimatedProgress);
+
+        // Update progress every 30 seconds
+        if (timeSpent > 0 && Math.floor(timeSpent) % 30 === 0) {
+          updateVideoProgress(estimatedProgress, defaultDuration);
+        }
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [currentModule, currentContent, course, contentStartTime, isContentCompleted]);
 
   const updateProgress = async (moduleId, contentId, progressData) => {
     try {
+      console.log('Sending progress update:', {
+        courseId,
+        moduleId,
+        contentId,
+        progressData
+      });
+
       const response = await axios.put(`${import.meta.env.VITE_API_URL}/progress/${courseId}/module/${moduleId}`, {
         contentId,
         ...progressData
       });
 
+      console.log('Progress update successful:', response.data);
+
       // Update local progress state
       if (response.data.progress) {
         setProgress(response.data.progress);
+        console.log('Updated local progress state:', response.data.progress);
       }
 
       // Check if course was completed
@@ -93,6 +147,70 @@ const CoursePlayer = () => {
       return response.data;
     } catch (error) {
       console.error('Error updating progress:', error);
+    }
+  };
+
+  // Update video progress continuously while watching
+  const updateVideoProgress = async (currentTime, duration) => {
+    if (!currentTime || !duration || isUpdatingProgress) return;
+
+    const watchedPercentage = Math.min(100, (currentTime / duration) * 100);
+
+    // Update progress every 5% or every 30 seconds to get more frequent updates
+    const progressThreshold = Math.floor(watchedPercentage / 5) * 5;
+    const timeThreshold = Math.floor(currentTime / 30) * 30;
+
+    if (progressThreshold > lastProgressUpdate || timeThreshold > lastProgressUpdate) {
+      setIsUpdatingProgress(true);
+      setLastProgressUpdate(Math.max(progressThreshold, timeThreshold));
+
+      try {
+        const module = course.modules[currentModule];
+        const content = module.content[currentContent];
+        const timeSpent = contentStartTime ? Math.floor((Date.now() - contentStartTime) / 1000) : 0;
+
+        console.log('Updating progress:', {
+          watchedPercentage: watchedPercentage.toFixed(1),
+          currentTime: currentTime.toFixed(1),
+          duration: duration.toFixed(1),
+          timeSpent,
+          moduleId: module._id,
+          contentId: content._id
+        });
+
+        const progressResponse = await updateProgress(module._id, content._id, {
+          contentType: content.type,
+          progress: watchedPercentage,
+          timeSpent: timeSpent,
+          completed: watchedPercentage >= 90, // Mark as completed when 90% watched
+          videoProgress: {
+            watchedDuration: currentTime,
+            totalDuration: duration,
+            watchedPercentage: watchedPercentage
+          }
+        });
+
+        console.log('Progress update response:', progressResponse);
+
+        // Auto-complete when 90% watched
+        if (watchedPercentage >= 90 && !isContentCompleted) {
+          setIsContentCompleted(true);
+
+          // Award XP for completion
+          try {
+            await axios.post(`${import.meta.env.VITE_API_URL}/gamification/xp`, {
+              points: content.xpReward || 10,
+              reason: `Completed ${content.title}`
+            });
+          } catch (error) {
+            console.error('Error awarding XP:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating video progress:', error);
+      } finally {
+        setIsUpdatingProgress(false);
+      }
     }
   };
 
@@ -318,7 +436,7 @@ const CoursePlayer = () => {
                         if (videoId) {
                           return (
                             <iframe
-                              src={`https://www.youtube.com/embed/${videoId}`}
+                              src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`}
                               className="w-full h-full rounded-lg"
                               allowFullScreen
                               title={currentContentData.title}
@@ -349,8 +467,14 @@ const CoursePlayer = () => {
                             className="w-full h-full rounded-lg"
                             controls
                             preload="metadata"
+                            onLoadedMetadata={(e) => {
+                              setVideoDuration(e.target.duration);
+                            }}
                             onTimeUpdate={(e) => {
-                              setVideoWatchTime(e.target.currentTime);
+                              const currentTime = e.target.currentTime;
+                              const duration = e.target.duration;
+                              setVideoWatchTime(currentTime);
+                              updateVideoProgress(currentTime, duration);
                             }}
                             onEnded={() => {
                               if (!isContentCompleted) {
@@ -451,6 +575,72 @@ const CoursePlayer = () => {
 
           {/* Progress Bar */}
           <div className="bg-gray-800 p-4 border-t border-gray-700">
+            {/* Current Video Progress */}
+            {currentContentData?.type === 'video' && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-400">Current Video</span>
+                    {isUpdatingProgress && (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-400">Saving progress...</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-400">
+                    {Math.round((videoWatchTime / (videoDuration || 1)) * 100)}% watched
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-1 mb-3">
+                  <div
+                    className="bg-green-500 h-1 rounded-full transition-all duration-300"
+                    style={{ width: `${(videoWatchTime / (videoDuration || 1)) * 100}%` }}
+                  ></div>
+                </div>
+
+                {/* Test buttons for YouTube progress */}
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => {
+                      // Set to 50% progress immediately
+                      const duration = videoDuration || 600; // Default 10 minutes
+                      const halfTime = duration * 0.5;
+                      setVideoWatchTime(halfTime);
+                      setVideoDuration(duration);
+                      updateVideoProgress(halfTime, duration);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                  >
+                    Set 50%
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Mark as 90% complete for testing
+                      const duration = videoDuration || 600;
+                      const newTime = duration * 0.9;
+                      setVideoWatchTime(newTime);
+                      setVideoDuration(duration);
+                      updateVideoProgress(newTime, duration);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+                  >
+                    Set 90%
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Refresh course data to sync with dashboard
+                      window.location.reload();
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Overall Course Progress */}
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-400">Course Progress</span>
               <span className="text-sm text-gray-400">
@@ -458,7 +648,7 @@ const CoursePlayer = () => {
               </span>
             </div>
             <div className="w-full bg-gray-700 rounded-full h-2">
-              <div 
+              <div
                 className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress?.overallProgress || 0}%` }}
               ></div>

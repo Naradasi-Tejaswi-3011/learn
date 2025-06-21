@@ -68,6 +68,11 @@ const StudentDashboard = () => {
     };
 
     fetchDashboardData();
+
+    // Refresh progress data every 30 seconds to show real-time updates
+    const interval = setInterval(fetchDashboardData, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -174,33 +179,48 @@ const StudentDashboard = () => {
                     <div key={courseProgress._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">
-                            {courseProgress.course.title}
-                          </h3>
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-semibold text-gray-900">
+                              {courseProgress.course.title}
+                            </h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              courseProgress.overallProgress === 100
+                                ? 'bg-green-100 text-green-800'
+                                : courseProgress.overallProgress > 0
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {courseProgress.overallProgress === 100 ? 'Completed' : 'In Progress'}
+                            </span>
+                          </div>
                           <p className="text-sm text-gray-600 mb-3">
                             {courseProgress.completedModules} of {courseProgress.totalModules} modules completed
                           </p>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                          <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div
+                              className={`h-3 rounded-full transition-all duration-500 ${
+                                courseProgress.overallProgress === 100
+                                  ? 'bg-green-500'
+                                  : 'bg-primary-600'
+                              }`}
                               style={{ width: `${courseProgress.overallProgress}%` }}
                             ></div>
                           </div>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-sm text-gray-600">
-                              {courseProgress.overallProgress}% complete
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-900">
+                              {Math.round(courseProgress.overallProgress)}% complete
                             </span>
                             <span className="text-sm text-gray-600">
                               {formatTimeSpent(courseProgress.totalTimeSpent || 0)}
                             </span>
                           </div>
                         </div>
-                        <Link 
+                        <Link
                           to={`/learn/${courseProgress.course._id}`}
                           className="ml-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
                         >
                           <Play className="h-4 w-4 mr-2" />
-                          Continue
+                          {courseProgress.overallProgress === 100 ? 'Review' : 'Continue'}
                         </Link>
                       </div>
                     </div>
