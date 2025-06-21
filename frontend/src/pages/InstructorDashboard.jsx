@@ -48,22 +48,57 @@ const InstructorDashboard = () => {
     pendingQuestions: 0
   });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (forceRefresh = false) => {
     try {
       setRefreshing(true);
+      console.log('=== INSTRUCTOR DASHBOARD API CALL ===');
       console.log('Fetching dashboard data for instructor:', user?._id);
+      console.log('User object:', user);
+      console.log('User role:', user?.role);
+      console.log('Force refresh:', forceRefresh);
+
+      // Clear existing data if force refresh
+      if (forceRefresh) {
+        console.log('🧹 Clearing existing data for force refresh');
+        setCourses([]);
+        setStudentQuestions([]);
+        setStats({
+          totalCourses: 0,
+          totalStudents: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          totalQuestions: 0,
+          pendingQuestions: 0
+        });
+      }
 
       // Show interface immediately with loading states
       setLoading(false);
 
       // Fetch courses with shorter timeout and better error handling
       if (user?._id) {
-        const coursesRes = await axios.get(`${import.meta.env.VITE_API_URL}/courses`, {
-          params: { instructor: user._id },
-          timeout: 2000 // Reduced timeout for faster response
+        console.log('Fetching courses for instructor:', user._id);
+        console.log('API URL:', `${import.meta.env.VITE_API_URL}/courses`);
+        console.log('Params being sent:', { instructor: user._id });
+
+        const apiUrl = `${import.meta.env.VITE_API_URL}/courses`;
+        const params = { instructor: user._id };
+
+        console.log('Making API call to:', apiUrl);
+        console.log('With params:', params);
+        console.log('Full URL will be:', `${apiUrl}?instructor=${user._id}`);
+        console.log('Axios defaults:', axios.defaults);
+        console.log('Authorization header:', axios.defaults.headers.common['Authorization']);
+
+        const coursesRes = await axios.get(apiUrl, {
+          params: params,
+          timeout: 1000 // Ultra-fast timeout for immediate response
         });
 
-        console.log('Courses loaded successfully:', coursesRes.data);
+        console.log('✅ API call successful!');
+
+        console.log('Courses API response:', coursesRes.data);
+        console.log('Number of courses found:', coursesRes.data.courses?.length || 0);
         const courses = coursesRes.data.courses || [];
         setCourses(courses);
 
@@ -110,7 +145,7 @@ const InstructorDashboard = () => {
       if (!user?._id) return;
 
       const questionsRes = await axios.get(`${import.meta.env.VITE_API_URL}/questions/instructor/${user._id}`, {
-        timeout: 3000
+        timeout: 1500 // Faster timeout for questions
       });
       const questions = questionsRes.data.questions || [];
       setStudentQuestions(questions);
@@ -131,21 +166,50 @@ const InstructorDashboard = () => {
   };
 
   useEffect(() => {
-    if (user?._id) {
+    console.log('=== INSTRUCTOR DASHBOARD useEffect ===');
+    console.log('User available:', !!user);
+    console.log('User ID:', user?._id);
+    console.log('User role:', user?.role);
+
+    if (user?._id && user?.role === 'instructor') {
+      console.log('✅ Instructor user available, calling fetchDashboardData');
       // Load data immediately without blocking UI
       fetchDashboardData();
+
+      // Set up real-time updates every 5 seconds for instructor dashboard
+      const interval = setInterval(fetchDashboardData, 5000);
+
+      return () => clearInterval(interval);
     } else {
-      // Show interface even without user data
+      console.log('❌ User not available or not instructor, showing interface without data');
+      // Reset data when user changes or logs out
+      setCourses([]);
+      setStats({
+        totalCourses: 0,
+        totalStudents: 0,
+        totalRevenue: 0,
+        averageRating: 0,
+        totalQuestions: 0,
+        pendingQuestions: 0
+      });
+      setStudentQuestions([]);
       setLoading(false);
     }
-  }, [user?._id]);
+  }, [user?._id, user?.role]);
 
-  // Ensure UI shows immediately
+  // Ensure UI shows immediately and force refresh on mount
   useEffect(() => {
+    console.log('=== COMPONENT MOUNTED ===');
     // Force show interface after 100ms regardless of API status
     const timer = setTimeout(() => {
       setLoading(false);
     }, 100);
+
+    // Force refresh data when component mounts (for login/logout scenarios)
+    if (user?._id && user?.role === 'instructor') {
+      console.log('🔄 Force refreshing data on component mount');
+      fetchDashboardData(true);
+    }
 
     return () => clearTimeout(timer);
   }, []);
@@ -194,6 +258,9 @@ const InstructorDashboard = () => {
       }));
 
       alert('Answer posted successfully! The student will be notified.');
+
+      // Immediately refresh questions data for real-time updates
+      fetchQuestionsInBackground();
     } catch (error) {
       console.error('Error answering question:', error);
       alert('Failed to post answer. Please try again.');
@@ -289,12 +356,12 @@ const InstructorDashboard = () => {
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={fetchDashboardData}
+              onClick={() => fetchDashboardData(true)}
               disabled={refreshing}
               className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center disabled:opacity-50"
             >
               <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
+              {refreshing ? 'Refreshing...' : 'Force Refresh'}
             </button>
             <Link
               to="/instructor/create-course"
@@ -481,10 +548,10 @@ const InstructorDashboard = () => {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600">Course Completion Rate</span>
-                      <span className="font-medium">85%</span>
+                      <span className="font-medium">{stats.totalCourses > 0 ? Math.round((courses.filter(c => c.studentsCount > 0).length / stats.totalCourses) * 100) : 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: '85%' }}></div>
+                      <div className="bg-green-600 h-2 rounded-full" style={{ width: `${stats.totalCourses > 0 ? Math.round((courses.filter(c => c.studentsCount > 0).length / stats.totalCourses) * 100) : 0}%` }}></div>
                     </div>
                   </div>
                   <div>
@@ -499,10 +566,10 @@ const InstructorDashboard = () => {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600">Course Engagement</span>
-                      <span className="font-medium">92%</span>
+                      <span className="font-medium">{stats.totalStudents > 0 ? Math.round((stats.totalStudents / Math.max(stats.totalCourses, 1)) * 20) : 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '92%' }}></div>
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${stats.totalStudents > 0 ? Math.round((stats.totalStudents / Math.max(stats.totalCourses, 1)) * 20) : 0}%` }}></div>
                     </div>
                   </div>
                   <div>
@@ -757,7 +824,7 @@ const InstructorDashboard = () => {
                         </div>
                         <div className="flex items-center">
                           <MessageSquare className="h-3 w-3 mr-1" />
-                          {Math.floor(Math.random() * 10)} questions
+                          {studentQuestions.filter(q => q.courseId === course._id).length} questions
                         </div>
                       </div>
                       {course.modules && course.modules.length > 0 && (
@@ -770,12 +837,12 @@ const InstructorDashboard = () => {
                       <div className="mt-3">
                         <div className="flex justify-between text-xs text-gray-600 mb-1">
                           <span>Course Completion</span>
-                          <span>{Math.floor(Math.random() * 40) + 60}%</span>
+                          <span>{course.studentsCount > 0 ? Math.round((course.studentsCount / Math.max(course.studentsCount + 5, 1)) * 100) : 0}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1">
                           <div
                             className="bg-green-500 h-1 rounded-full"
-                            style={{ width: `${Math.floor(Math.random() * 40) + 60}%` }}
+                            style={{ width: `${course.studentsCount > 0 ? Math.round((course.studentsCount / Math.max(course.studentsCount + 5, 1)) * 100) : 0}%` }}
                           ></div>
                         </div>
                       </div>

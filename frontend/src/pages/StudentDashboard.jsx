@@ -84,8 +84,8 @@ const StudentDashboard = () => {
 
     fetchDashboardData();
 
-    // Refresh progress data every 30 seconds to show real-time updates
-    const interval = setInterval(fetchDashboardData, 30000);
+    // Refresh progress data every 5 seconds for real-time updates
+    const interval = setInterval(fetchDashboardData, 5000);
 
     return () => clearInterval(interval);
   }, []);

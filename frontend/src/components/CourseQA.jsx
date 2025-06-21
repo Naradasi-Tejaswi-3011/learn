@@ -20,6 +20,11 @@ const CourseQA = ({ courseId, courseName }) => {
 
   useEffect(() => {
     fetchQuestions();
+
+    // Set up real-time updates every 3 seconds for Q&A
+    const interval = setInterval(fetchQuestions, 3000);
+
+    return () => clearInterval(interval);
   }, [courseId]);
 
   const fetchQuestions = async () => {

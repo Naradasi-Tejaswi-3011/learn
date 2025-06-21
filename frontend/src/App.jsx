@@ -157,7 +157,7 @@ function AppContent() {
           path="/instructor"
           element={
             <ProtectedRoute requiredRole="instructor">
-              <InstructorDashboard />
+              <InstructorDashboard key={user?._id} />
             </ProtectedRoute>
           }
         />
